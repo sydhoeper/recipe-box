@@ -39,32 +39,6 @@ function extractRecipe(html){const doc=new DOMParser().parseFromString(html,'tex
 function plain(v){const d=new DOMParser().parseFromString(String(v||''),'text/html');return d.body.textContent||''}
 function normalize(x){let steps=[];function flatten(a){if(Array.isArray(a))a.forEach(flatten);else if(typeof a==='string')steps.push(plain(a));else if(a?.itemListElement)flatten(a.itemListElement);else if(a?.text)steps.push(plain(a.text))}flatten(x.recipeInstructions);const authors=Array.isArray(x.author)?x.author:[x.author];const img=Array.isArray(x.image)?x.image[0]:x.image;return {id:crypto.randomUUID(),demo:false,title:plain(x.name),chef:authors.map(a=>typeof a==='string'?a:a?.name||'').filter(Boolean).join(', '),image:safeUrl(typeof img==='string'?img:img?.url),category:$('#category').value,ingredients:(x.recipeIngredient||[]).map(plain),steps,source:pendingSource,time:x.totalTime?String(x.totalTime).replace('PT','').replace('H',' hr ').replace('M',' min'):'',servings:plain(Array.isArray(x.recipeYield)?x.recipeYield.join(', '):x.recipeYield)}}
 function finish(r){if(!r.title||!r.ingredients.length||!r.steps.length)throw Error('This page has an incomplete recipe.');const old=recipes;recipes=[r,...recipes];if(!save()){recipes=old;return}dialog.close();active='All recipes';query='';page=0;box();toast('Tucked into your recipe box.');openRecipe(r.id)}
-// A verified example also works when the publisher blocks browser requests.
-function bundledRecipe(url) {
- const host = url.hostname.replace(/^www\./, '');
- if (host !== 'jessicainthekitchen.com' ||
-     url.pathname.replace(/\/$/, '') !== '/easy-sweet-potato-curry-one-pot') return;
- return {
-  name: 'Easy Sweet Potato Curry',
-  author: {name: 'Jessica Hylton · Jessica in the Kitchen'},
-  totalTime: 'PT55M',
-  recipeYield: '4 servings',
-  recipeIngredient: [
-   '2 Tbsp coconut oil', '½ large red onion (150 g), finely diced',
-   '14 oz diced tomatoes (400 g)', '¾ tsp sea salt, or to taste',
-   '¼ tsp ground black pepper, or to taste', '3 minced garlic cloves',
-   '1½ Tbsp garam masala', '1 tsp curry powder', '¾ Tbsp paprika',
-   '¼ tsp cumin', '1 cup cooked chickpeas', '1 lb sweet potatoes, peeled and cut into 1-inch cubes',
-   'One 13.5 oz can coconut milk', 'Juice of 1 small lime', '3 cups spinach'
-  ],
-  recipeInstructions: [
-   'Heat 2 Tbsp oil over medium-high. Stir in ½ diced red onion, 14 oz tomatoes, ¾ tsp salt and ¼ tsp pepper. Lower to medium and cook about 10 minutes, until the onion softens and the tomatoes release their juices.',
-   'Mix in 1 cup chickpeas, 1 lb cubed sweet potatoes, 3 minced garlic cloves, 1½ Tbsp garam masala, 1 tsp curry powder, ¾ Tbsp paprika and ¼ tsp cumin. Stir for about 30 seconds to bloom the spices.',
-   'Pour in the 13.5 oz can of coconut milk and bring to a boil. Reduce to medium-low and simmer for 20–30 minutes, until a fork easily pierces the potatoes.',
-   'Fold in 3 cups spinach and the juice of 1 small lime. Take off the heat, adjust the seasoning, and let rest about 3 minutes so the spinach wilts.'
-  ]
- };
-}
 $('#importForm').onsubmit = async event => {
  event.preventDefault();
  const source = safeUrl($('#url').value.trim());
@@ -91,19 +65,23 @@ $('#importForm').onsubmit = async event => {
  box();
  toast('Recipe link saved.');
  try {
-  let data = bundledRecipe(url);
-  const adapted = Boolean(data);
-  if (!data) {
+  const endpoint = document.querySelector('meta[name="recipe-importer"]')?.content;
+  let data;
+  if (endpoint) {
+   const requestUrl = new URL(endpoint);
+   requestUrl.searchParams.set('url', source);
+   const response = await fetch(requestUrl, {credentials:'omit', signal:AbortSignal.timeout(12000)});
+   if (response.ok) data = (await response.json()).recipe;
+  } else {
    const response = await fetch(source, {credentials:'omit', signal:AbortSignal.timeout(8000)});
-   if (!response.ok) return;
-   data = extractRecipe(await response.text());
+   if (response.ok) data = extractRecipe(await response.text());
   }
   if (!data) return;
   const imported = normalize(data);
   if (!imported.title || !imported.ingredients.length || !imported.steps.length) return;
   if (!recipes.some(r => r.id === card.id)) return;
   const beforeImport = recipes;
-  recipes = recipes.map(r => r.id === card.id ? {...imported, id:card.id, source, category, adapted} : r);
+  recipes = recipes.map(r => r.id === card.id ? {...imported, id:card.id, source, category} : r);
   if (!save()) { recipes = beforeImport; return; }
   if (!selected) cards();
   toast('Ingredients and steps imported.');
