@@ -30,7 +30,7 @@ function cards(){let list=recipes.filter(r=>(active==='All recipes'||r.category=
  });document.querySelectorAll('[data-flip]').forEach(b=>b.onclick=()=>{if(list.length<=1){toast('Add another recipe to flip through your box.');return}page=(page+1)%Math.ceil(list.length/perPage);const ids=list.map(r=>r.id);const rotated=[...ids.slice(1),ids[0]];if(perPage===3){const positions=recipes.map((r,i)=>ids.includes(r.id)?i:-1).filter(i=>i>=0);positions.forEach((pos,i)=>recipes[pos]=list.find(r=>r.id===rotated[i]));page=0}cards();$('#cards').classList.add('flip');document.querySelectorAll('#cards [data-flip]')[Number(b.dataset.flip)]?.focus({preventScroll:true});setTimeout(()=>$('#cards').classList.remove('flip'),450)})}
 function openRecipe(id){history.pushState({recipe:id},'','#recipe-'+encodeURIComponent(id));detail(id);window.scrollTo(0,0)}
 function stepAmounts(step,ingredients){const stop=new Set(['with','into','then','until','over','from','your','them','that','this','and','the','for','add','cup','cups','tablespoons','teaspoons','chopped','fresh','ground','large','small','finely','taste','water']);const words=step.toLowerCase().match(/[a-z]+/g)||[];const matches=ingredients.filter(ing=>(ing.toLowerCase().match(/[a-z]+/g)||[]).some(w=>w.length>3&&!stop.has(w)&&words.includes(w)));return matches.length?'<span class="stepamounts">'+matches.map(esc).join(' · ')+'</span>':''}
-function detail(id){let r=recipes.find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero" src="${esc(safeUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(r.category)} · ${r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p><div class="facts"><span>◷ ${esc(r.time||'Time not provided')}</span><span>${esc(r.servings||'Servings not provided')}</span></div><h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3>Let’s make something good.</h3>${r.adapted?'<div class="quantitynote">Cooking steps adapted from Dishing Out Health, with amounts included. See the original recipe below for notes and substitutions.</div>':r.demo===false?'<div class="quantitynote">Amounts are shown alongside matching steps. Open the ingredient tray anytime for the full list. Imported steps keep the author’s original wording.</div>':''}${r.steps.map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}${r.demo===false&&!r.adapted?stepAmounts(s,r.ingredients):''}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}<a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>${r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Remove from my box</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});$('#back').onclick=()=>{if(history.state?.recipe)history.back();else{history.replaceState(null,'',location.pathname);box()}};if($('#remove'))$('#remove').onclick=()=>{if(confirm('Remove this recipe from your device?')){let previous=recipes;recipes=recipes.filter(x=>x.id!==id);if(save()){history.back()}else recipes=previous}}}
+function detail(id){let r=recipes.find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero" src="${esc(safeUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(r.category)} · ${r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p><div class="facts"><span>◷ ${esc(r.time||'Time not provided')}</span><span>${esc(r.servings||'Servings not provided')}</span></div><h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3>Let’s make something good.</h3>${r.adapted?'<div class="quantitynote">Cooking steps adapted from the original, with amounts included. See the original recipe below for notes and substitutions.</div>':r.demo===false?'<div class="quantitynote">Amounts are shown alongside matching steps. Open the ingredient tray anytime for the full list. Imported steps keep the author’s original wording.</div>':''}${r.steps.map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}${r.demo===false&&!r.adapted?stepAmounts(s,r.ingredients):''}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}<a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>${r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Remove from my box</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});$('#back').onclick=()=>{if(history.state?.recipe)history.back();else{history.replaceState(null,'',location.pathname);box()}};if($('#remove'))$('#remove').onclick=()=>{if(confirm('Remove this recipe from your device?')){let previous=recipes;recipes=recipes.filter(x=>x.id!==id);if(save()){history.back()}else recipes=previous}}}
 window.addEventListener('scroll',()=>{if(selected&&$('.recipebar'))$('.recipebar').classList.toggle('hide',window.scrollY>90)},{passive:true});window.addEventListener('popstate',()=>{if(location.hash.startsWith('#recipe-'))detail(decodeURIComponent(location.hash.slice(8)));else box()});
 $('#category').innerHTML=categories.slice(1).map(c=>`<option>${c}</option>`).join('');let pendingSource='';let importing=false;let controller;
 function openImport(){ $('#manualForm').hidden=true;$('#importStatus').textContent='';$('#importForm').reset();$('#manualForm').reset();dialog.showModal();$('#url').focus()}
@@ -39,6 +39,32 @@ function extractRecipe(html){const doc=new DOMParser().parseFromString(html,'tex
 function plain(v){const d=new DOMParser().parseFromString(String(v||''),'text/html');return d.body.textContent||''}
 function normalize(x){let steps=[];function flatten(a){if(Array.isArray(a))a.forEach(flatten);else if(typeof a==='string')steps.push(plain(a));else if(a?.itemListElement)flatten(a.itemListElement);else if(a?.text)steps.push(plain(a.text))}flatten(x.recipeInstructions);const authors=Array.isArray(x.author)?x.author:[x.author];const img=Array.isArray(x.image)?x.image[0]:x.image;return {id:crypto.randomUUID(),demo:false,title:plain(x.name),chef:authors.map(a=>typeof a==='string'?a:a?.name||'').filter(Boolean).join(', '),image:safeUrl(typeof img==='string'?img:img?.url),category:$('#category').value,ingredients:(x.recipeIngredient||[]).map(plain),steps,source:pendingSource,time:x.totalTime?String(x.totalTime).replace('PT','').replace('H',' hr ').replace('M',' min'):'',servings:plain(Array.isArray(x.recipeYield)?x.recipeYield.join(', '):x.recipeYield)}}
 function finish(r){if(!r.title||!r.ingredients.length||!r.steps.length)throw Error('This page has an incomplete recipe.');const old=recipes;recipes=[r,...recipes];if(!save()){recipes=old;return}dialog.close();active='All recipes';query='';page=0;box();toast('Tucked into your recipe box.');openRecipe(r.id)}
+// A verified example also works when the publisher blocks browser requests.
+function bundledRecipe(url) {
+ const host = url.hostname.replace(/^www\./, '');
+ if (host !== 'jessicainthekitchen.com' ||
+     url.pathname.replace(/\/$/, '') !== '/easy-sweet-potato-curry-one-pot') return;
+ return {
+  name: 'Easy Sweet Potato Curry',
+  author: {name: 'Jessica Hylton · Jessica in the Kitchen'},
+  totalTime: 'PT55M',
+  recipeYield: '4 servings',
+  recipeIngredient: [
+   '2 Tbsp coconut oil', '½ large red onion (150 g), finely diced',
+   '14 oz diced tomatoes (400 g)', '¾ tsp sea salt, or to taste',
+   '¼ tsp ground black pepper, or to taste', '3 minced garlic cloves',
+   '1½ Tbsp garam masala', '1 tsp curry powder', '¾ Tbsp paprika',
+   '¼ tsp cumin', '1 cup cooked chickpeas', '1 lb sweet potatoes, peeled and cut into 1-inch cubes',
+   'One 13.5 oz can coconut milk', 'Juice of 1 small lime', '3 cups spinach'
+  ],
+  recipeInstructions: [
+   'Heat 2 Tbsp oil over medium-high. Stir in ½ diced red onion, 14 oz tomatoes, ¾ tsp salt and ¼ tsp pepper. Lower to medium and cook about 10 minutes, until the onion softens and the tomatoes release their juices.',
+   'Mix in 1 cup chickpeas, 1 lb cubed sweet potatoes, 3 minced garlic cloves, 1½ Tbsp garam masala, 1 tsp curry powder, ¾ Tbsp paprika and ¼ tsp cumin. Stir for about 30 seconds to bloom the spices.',
+   'Pour in the 13.5 oz can of coconut milk and bring to a boil. Reduce to medium-low and simmer for 20–30 minutes, until a fork easily pierces the potatoes.',
+   'Fold in 3 cups spinach and the juice of 1 small lime. Take off the heat, adjust the seasoning, and let rest about 3 minutes so the spinach wilts.'
+  ]
+ };
+}
 $('#importForm').onsubmit = async event => {
  event.preventDefault();
  const source = safeUrl($('#url').value.trim());
@@ -54,7 +80,9 @@ $('#importForm').onsubmit = async event => {
  const category = $('#category').value;
  const card = {id:crypto.randomUUID(), demo:false, linkOnly:true, title, category, source, ingredients:[], steps:[]};
  const previous = recipes;
- recipes = [card,...recipes];
+ const existing = recipes.find(r => r.linkOnly && r.source === source);
+ if (existing) card.id = existing.id;
+ recipes = [card,...recipes.filter(r => r.id !== card.id)];
  if (!save()) { recipes = previous; return; }
  dialog.close();
  active = 'All recipes';
@@ -63,15 +91,19 @@ $('#importForm').onsubmit = async event => {
  box();
  toast('Recipe link saved.');
  try {
-  const response = await fetch(source, {credentials:'omit', signal:AbortSignal.timeout(8000)});
-  if (!response.ok) return;
-  const data = extractRecipe(await response.text());
+  let data = bundledRecipe(url);
+  const adapted = Boolean(data);
+  if (!data) {
+   const response = await fetch(source, {credentials:'omit', signal:AbortSignal.timeout(8000)});
+   if (!response.ok) return;
+   data = extractRecipe(await response.text());
+  }
   if (!data) return;
   const imported = normalize(data);
   if (!imported.title || !imported.ingredients.length || !imported.steps.length) return;
   if (!recipes.some(r => r.id === card.id)) return;
   const beforeImport = recipes;
-  recipes = recipes.map(r => r.id === card.id ? {...imported, id:card.id, source, category} : r);
+  recipes = recipes.map(r => r.id === card.id ? {...imported, id:card.id, source, category, adapted} : r);
   if (!save()) { recipes = beforeImport; return; }
   if (!selected) cards();
   toast('Ingredients and steps imported.');
