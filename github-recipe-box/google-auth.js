@@ -5,6 +5,15 @@ const config = {
   "appId": "1:398015338082:web:c051e00288334d0627a33b"
 }; // Replace with the Firebase web app configuration.
 
+const sharedOwner = 'rByXcKPbqLQNJS2fozu8cu3lsvq1';
+const sharedFields = [
+  'title', 'category', 'chef', 'image', 'source', 'ingredients', 'steps',
+  'prepTime', 'cookTime', 'time', 'servings', 'adapted', 'photoOnly', 'linkOnly'
+];
+const shareableRecipe = recipe => Object.fromEntries(sharedFields
+  .filter(field => recipe[field] !== undefined)
+  .map(field => [field, recipe[field]]));
+
 if (config) {
   const base = 'https://www.gstatic.com/firebasejs/11.10.0/';
   try {
@@ -15,7 +24,32 @@ if (config) {
     const auth = sdk.getAuth(app);
     const firestore = db.getFirestore(app);
     await auth.authStateReady();
+    const shared = db.collection(firestore, 'sydRecipes');
+    const privateRef = (user, id) => db.doc(firestore, 'users', user.uid, 'recipes', id);
     window.recipeAuth = {
+      isSharedOwner: user => user?.uid === sharedOwner,
+      watchShared: (next, error) => db.onSnapshot(shared, next, error),
+      async syncShared(user, privateDocs) {
+        if (user.uid !== sharedOwner) return;
+        const published = await db.getDocsFromServer(shared);
+        const ids = new Set([...privateDocs.map(doc => doc.id), ...published.docs.map(doc => doc.id)]);
+        const existing = new Map(published.docs.map(doc => [doc.id, doc.data()]));
+        const privateData = new Map(privateDocs.map(doc => [doc.id, doc.data()]));
+        function sameRecipe(left, right) {
+          return sharedFields.every(field => JSON.stringify(left?.[field]) === JSON.stringify(right?.[field]));
+        }
+        for (const id of ids) {
+          const recipe = privateData.get(id);
+          if (sameRecipe(recipe?.deleted ? null : recipe, existing.get(id))) continue;
+          if (auth.currentUser?.uid !== user.uid) return;
+          await db.runTransaction(firestore, async transaction => {
+            const latest = (await transaction.get(privateRef(user, id))).data();
+            const ref = db.doc(shared, id);
+            if (!latest || latest.deleted) transaction.delete(ref);
+            else transaction.set(ref, shareableRecipe(latest));
+          });
+        }
+      },
       get user() { return auth.currentUser; },
       signIn: () => sdk.signInWithPopup(auth, new sdk.GoogleAuthProvider()),
       signOut: () => sdk.signOut(auth),
@@ -25,9 +59,14 @@ if (config) {
       write: (user, changes) => {
         const batch = db.writeBatch(firestore);
         for (const [id, recipe] of changes) {
-          const ref = db.doc(firestore, 'users', user.uid, 'recipes', id);
+          const ref = privateRef(user, id);
           if (recipe) batch.set(ref, recipe);
           else batch.delete(ref);
+          if (user.uid === sharedOwner) {
+            const sharedRef = db.doc(shared, id);
+            if (recipe && !recipe.deleted) batch.set(sharedRef, shareableRecipe(recipe));
+            else batch.delete(sharedRef);
+          }
         }
         return batch.commit();
       }

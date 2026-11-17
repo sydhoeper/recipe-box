@@ -80,3 +80,15 @@ body{background:radial-gradient(ellipse at 8% 16%,#f2a8c421,transparent 34%),rad
 .recipehero.recipe-scan{height:auto;max-height:none;object-fit:contain}
 
 .card{border-bottom:5px solid var(--card-accent,#f2a8c4)}
+
+.recipe-pairings {
+ margin: 1.25rem 0;
+ padding: 1rem;
+ border: 1px solid currentColor;
+ border-radius: 1rem;
+}
+.recipe-pairings h3 { margin: 0; }
+.recipe-pairings ul { padding-left: 1.5rem; margin: 0.25rem 0 0; }
+.recipe-pairings a { color: inherit; display: inline-flex; align-items: center; min-height: 44px; }
+#editPairings { margin: 1rem 0; border-radius: 1rem; }
+#editPairingOptions .ingredient { min-height: 44px; }
