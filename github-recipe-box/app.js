@@ -1,5 +1,5 @@
 const $=s=>document.querySelector(s), app=$('#app'), dialog=$('#importDialog');
-const categories=['All recipes','Mains','Soups','Sides','Salads','Desserts','Cocktails','Favorites'];
+const categories=['All recipes','Mains','Soups','Sides','Salads','Desserts','Cocktails','My Favorites'];
 const sharedCategory = "Syd’s Favorites";
 let sharedRecipes = [];
 let sharedStatus = '';
@@ -8,7 +8,7 @@ const visibleCategories = () => cloudUser
  ? [...categories,sharedCategory] : categories;
 const categoryColors = {
  'All recipes':'#f2a8c4', Mains:'#f7bd91', Soups:'#f3dc87', Sides:'#d5e8a9',
- Salads:'#9fd7be', Desserts:'#9bc7ea', Cocktails:'#c2afe8', Favorites:'#ad8bdc', [sharedCategory]:'#f7c9df'
+ Salads:'#9fd7be', Desserts:'#9bc7ea', Cocktails:'#c2afe8', 'My Favorites':'#ad8bdc', [sharedCategory]:'#f7c9df'
 };
 const samples=[{"id": "wild-rice-mushroom-soup", "demo": false, "adapted": true, "title": "Wild Rice and Mushroom Soup", "category": "Soups", "chef": "Jamie Vespa MS, RD · Dishing Out Health", "time": "1 hr 25 min", "servings": "6 servings", "image": "https://dishingouthealth.com/wp-content/uploads/2020/09/WildRiceMushroomSoup_Square-300x300.jpg", "source": "https://dishingouthealth.com/wild-rice-mixed-mushroom-soup/", "ingredients": ["2 Tbsp olive oil", "2 Tbsp unsalted butter", "1 yellow onion, finely chopped", "¾ cup finely chopped carrots", "½ cup finely chopped celery", "8–12 oz sliced cremini mushrooms (or cremini and shiitake)", "4 garlic cloves, minced", "1 cup dry wild rice blend", "1 Tbsp poultry seasoning (or Herbes de Provence)", "1 tsp kosher salt", "½ tsp black pepper", "4 cups lower-sodium vegetable broth", "1 cup water", "⅔ cup heavy cream (or cashew cream)", "⅓ cup finely grated Parmesan"], "steps": ["Measure ⅔ cup cream; leave at room temperature.", "Heat 2 Tbsp oil and 2 Tbsp butter over medium-high heat. Soften 1 chopped onion, ¾ cup carrots and ½ cup celery for 8 minutes.", "Add 8–12 oz mushrooms and 4 minced garlic cloves. Cook 6–8 minutes, stirring occasionally, until golden.", "Toast 1 cup rice in the pot for 1–2 minutes. Add 1 Tbsp poultry seasoning, 1 tsp salt and ½ tsp pepper.", "Pour in 4 cups broth and 1 cup water. Bring to a gentle boil. Cover; simmer over medium-low heat for 45–60 minutes, until rice is tender.", "Stir in ⅔ cup cream. Gradually add ⅓ cup Parmesan, stirring. Take off heat and serve."]}];
 const storageKey='little-recipe-box-v1', seedKey='little-recipe-box-default-wild-rice-v1';
@@ -82,7 +82,7 @@ function bindFavorites() {
   };
  });
 }
-function cards(){const shared=active===sharedCategory;let list=(shared?sharedRecipes:recipes).filter(r=>(shared||active==='All recipes'||(active==='Favorites'?r.favorite:r.category===active))&&(r.title+' '+r.ingredients.join(' ')).toLowerCase().includes(query.toLowerCase()));const visible=list.sort((a,b)=>a.title.localeCompare(b.title,'en',{sensitivity:'base'}));$('#count').textContent=`${list.length} RECIPE${list.length===1?'':'S'}`;$('#cards').innerHTML=visible.length?visible.map((r,i)=>`<article class="card" style="--card-accent:${categoryColors[r.category] || categoryColors['All recipes']}"><button class="cardmain" data-open="${esc(r.id)}" aria-label="Open ${esc(r.title)}${r.linkOnly?' (original recipe, new tab)':''}">${r.image?`<img class="photo" src="${esc(recipeImageUrl(r.image))}" alt="" loading="lazy">`:'<div class="photo" style="display:grid;place-items:center;font-size:66px" aria-hidden="true">✧</div>'}<div class="cardbody"><p class="eyebrow">${esc(r.category)} <span aria-hidden="true">·</span> ${r.linkOnly?'SAVED LINK':r.demo===false?'YOUR KEEPSAKE':'FROM OUR SAMPLE BOX'}</p><h3>${esc(r.title)}</h3><div class="meta">${r.linkOnly?'Open original ↗':recipeFacts(r,true)}</div></div></button>${shared?'':favoriteButton(r)}${r.linkOnly&&!shared?`<button type="button" class="round edit-link" data-edit="${esc(r.id)}">Edit recipe</button><button type="button" class="round" data-delete="${esc(r.id)}">Delete recipe</button>`:''}</article>`).join(''):`<div class="empty"><h3>A little room for something good.</h3><p>${shared?esc(sharedStatus || 'Syd hasn’t shared any matching recipes yet.'):active==='Favorites'?'Tap the star on a recipe to add it here.':'Try another search, or add your first recipe here.'}</p></div>`;document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
+function cards(){const shared=active===sharedCategory;let list=(shared?sharedRecipes:recipes).filter(r=>(shared||active==='All recipes'||(active==='My Favorites'?r.favorite:r.category===active))&&(r.title+' '+r.ingredients.join(' ')).toLowerCase().includes(query.toLowerCase()));const visible=list.sort((a,b)=>a.title.localeCompare(b.title,'en',{sensitivity:'base'}));$('#count').textContent=`${list.length} RECIPE${list.length===1?'':'S'}`;$('#cards').innerHTML=visible.length?visible.map((r,i)=>`<article class="card" style="--card-accent:${categoryColors[r.category] || categoryColors['All recipes']}"><button class="cardmain" data-open="${esc(r.id)}" aria-label="Open ${esc(r.title)}${r.linkOnly?' (original recipe, new tab)':''}">${r.image?`<img class="photo" src="${esc(recipeImageUrl(r.image))}" alt="" loading="lazy">`:'<div class="photo" style="display:grid;place-items:center;font-size:66px" aria-hidden="true">✧</div>'}<div class="cardbody"><p class="eyebrow">${esc(r.category)} <span aria-hidden="true">·</span> ${r.linkOnly?'SAVED LINK':r.demo===false?'YOUR KEEPSAKE':'FROM OUR SAMPLE BOX'}</p><h3>${esc(r.title)}</h3><div class="meta">${r.linkOnly?'Open original ↗':recipeFacts(r,true)}</div></div></button>${shared?'':favoriteButton(r)}${r.linkOnly&&!shared?`<button type="button" class="round edit-link" data-edit="${esc(r.id)}">Edit recipe</button><button type="button" class="round" data-delete="${esc(r.id)}">Delete recipe</button>`:''}</article>`).join(''):`<div class="empty"><h3>A little room for something good.</h3><p>${shared?esc(sharedStatus || 'Syd hasn’t shared any matching recipes yet.'):active==='My Favorites'?'Tap the star on a recipe to add it here.':'Try another search, or add your first recipe here.'}</p></div>`;document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
  const recipe = (shared?sharedRecipes:recipes).find(r => r.id === b.dataset.open);
  if (recipe?.linkOnly) window.open(safeUrl(recipe.source), '_blank', 'noopener,noreferrer');
  else openRecipe(b.dataset.open,shared);
@@ -117,7 +117,7 @@ function editRecipe(id) {
  const editor = $('#editRecipeDialog');
  const form = $('#editRecipeForm');
  const category = $('#editCategory');
- category.replaceChildren(...categories.filter(name=>name!=='All recipes'&&name!=='Favorites').map(name => new Option(name)));
+ category.replaceChildren(...categories.filter(name=>name!=='All recipes'&&name!=='My Favorites').map(name => new Option(name)));
  $('#editTitle').value = recipe.title;
  category.value = recipe.category;
  const pairingField = $('#editPairings');
@@ -401,7 +401,7 @@ if($('#recipeNotesForm')) $('#recipeNotesForm').onsubmit=event=>{
 $('#back').onclick=()=>{if(history.state?.recipe)history.back();else{history.replaceState(null,'',location.pathname);box()}};if($('#remove'))$('#remove').onclick=()=>confirmRecipeDeletion(id);}
 
 window.addEventListener('scroll',()=>{if(selected&&$('.recipebar'))$('.recipebar').classList.toggle('hide',window.scrollY>90)},{passive:true});window.addEventListener('popstate',()=>{if(location.hash.startsWith('#recipe-'))detail(decodeURIComponent(location.hash.slice(8)));else if(location.hash.startsWith('#syd-')){if(cloudUser){active=sharedCategory;detail(decodeURIComponent(location.hash.slice(5)),true)}else box()}else box()});
-$('#category').innerHTML=categories.filter(name=>name!=='All recipes'&&name!=='Favorites').map(c=>`<option>${c}</option>`).join('');let pendingSource='';let importing=false;let controller;
+$('#category').innerHTML=categories.filter(name=>name!=='All recipes'&&name!=='My Favorites').map(c=>`<option>${c}</option>`).join('');let pendingSource='';let importing=false;let controller;
 let deviceRecipes = recipes;
 let signingIn = false;
 let cloudUser = null;
@@ -574,7 +574,7 @@ function setImportMode(mode) {
 document.querySelectorAll('[name="recipeMode"]').forEach(input => {
  input.onchange = () => setImportMode(input.value);
 });
-$('#photoCategory').replaceChildren(...categories.filter(name=>name!=='All recipes'&&name!=='Favorites').map(name=>new Option(name)));
+$('#photoCategory').replaceChildren(...categories.filter(name=>name!=='All recipes'&&name!=='My Favorites').map(name=>new Option(name)));
 $('#photoImportForm').onsubmit = async event => {
  event.preventDefault();
  const owner = cloudUser?.uid;
