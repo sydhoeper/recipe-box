@@ -19,3 +19,14 @@ body{background:radial-gradient(ellipse at 8% 16%,#f2a8c421,transparent 34%),rad
 .search input{border:0;border-bottom:1px solid #1c122050;background:transparent;border-radius:0;padding:12px 0;font-size:14px}.recipebar h1{font-style:normal}.primary:focus-visible,.tab:focus-visible,summary:focus-visible{outline:3px solid #326cbc;outline-offset:4px}
 
 .google-button{white-space:nowrap;flex-shrink:0;gap:0}@media(max-width:480px){.google-button{padding:8px 12px;font-size:12px}.brand{font-size:19px;gap:5px}.brand svg{width:26px;height:26px}}
+
+.facts,.meta{display:flex;flex-wrap:wrap;gap:12px 20px}
+.recipe-fact{display:inline-flex;align-items:center;gap:7px}
+.recipe-fact svg{width:20px;height:20px;flex:none}
+.recipe-fact strong{font-weight:700}
+.meta .recipe-fact svg{width:16px;height:16px}
+.jump-instructions{margin-top:18px}
+#recipeInstructions{scroll-margin-top:90px}
+.recipe-notes textarea{display:block;width:100%;padding:12px;font:inherit;background:#fffefb}
+.recipe-notes .primary{margin-top:12px}
+#paging .round{font-size:13px;width:auto;padding:0 12px}
