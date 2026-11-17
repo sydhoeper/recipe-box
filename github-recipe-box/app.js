@@ -2,10 +2,10 @@ const $=s=>document.querySelector(s), app=$('#app'), dialog=$('#importDialog');
 const categories=['All recipes','Mains','Soups','Sides','Salads','Desserts','Cocktails','My Favorites'];
 const sharedCategory = "Syd’s Favorites";
 let sharedRecipes = [];
-let sharedStatus = '';
+let sharedStatus = 'Loading Syd’s favorites…';
 let stopSharedWatch;
 const visibleCategories = () => cloudUser
- ? [...categories,sharedCategory] : categories;
+ ? [...categories,sharedCategory] : categories.filter(name => name !== 'My Favorites');
 const categoryLabel = name => name === 'Cocktails' ? 'Drinks' : name;
 const categoryColors = {
  'All recipes':'#f2a8c4', Mains:'#f7bd91', Soups:'#f3dc87', Sides:'#d5e8a9',
@@ -31,7 +31,7 @@ function safeUrl(s){try{const u=new URL(s);return ['https:','http:'].includes(u.
 function toast(s){$('#toast').textContent=s;$('#toast').style.display='block';setTimeout(()=>$('#toast').style.display='none',3500)}
 function save(){if(window.recipeAuth?.user)return saveCloudRecipes();try{localStorage.setItem('little-recipe-box-v1',JSON.stringify(recipes));deviceRecipes=recipes;return true}catch{toast('Your browser could not save this recipe. Free some device storage and try again.');return false}}
 const logo='<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M5 14h30l-2 21H7L5 14Z M10 14V8h20v6 M14 8V4h12v4 M4 20h32 M16 25h8"/><path d="m28 3 2-2m4 7 3-1"/></svg>';
-function box(){selected=null;document.title='Little Recipe Box';app.innerHTML=`<div class="shell"><header class="topbar"><div class="brand">${logo}<span>little recipe box</span></div><button class="primary google-button" id="googleSignIn">Continue with Google</button></header><main id="main"><section class="hero"><div><p class="eyebrow">ALL YOUR GOOD FOOD, TOGETHER.</p><h1>Your little<br><em>recipe box.</em></h1><p class="subtitle">A happy little home for everything you love to cook.</p></div><div class="heroart" aria-hidden="true"><div class="artpaper"></div><span class="star">✧</span><span class="spoon">♡</span></div></section><div class="toolbar"><div class="search"><span aria-hidden="true">⌕</span><input id="search" aria-label="Search recipes" type="search" placeholder="Find something delicious…" value="${esc(query)}"></div><button class="primary" id="add">＋ <span style="font-size:13px">Add a recipe</span></button></div><section class="box" aria-label="Your recipe box"><div class="tabs" role="tablist" aria-label="Recipe categories">${visibleCategories().map((c,i)=>`<button class="tab" role="tab" id="tab${i}" aria-controls="cards" aria-selected="${c===active}" tabindex="${c===active?0:-1}" style="background:${categoryColors[c]}" data-cat="${c}">${categoryLabel(c)}</button>`).join('')}</div><div class="boxhead"><span id="collectionTitle">${active==='All recipes'?'THE WHOLE COLLECTION':categoryLabel(active).toUpperCase()}</span><span id="count"></span></div><div class="grid" id="cards" role="tabpanel" aria-labelledby="tab${visibleCategories().indexOf(active)}"></div><div class="boxfoot">A few favorites, a lifetime of good meals.</div></section><p class="savehint">✧ <span id="recipeStorageStatus" role="status">${esc(syncStatus || 'Saved on this device')}</span></p></main><footer class="footer"><span>MADE FOR MESSY COUNTERS & HAPPY TABLES</span><span>With a little <span class="heart">♡</span></span></footer></div>`;
+function box(){selected=null;document.title='Little Recipe Box';app.innerHTML=`<div class="shell"><header class="topbar"><div class="brand">${logo}<span>little recipe box</span></div><button class="primary google-button" id="googleSignIn">Continue with Google</button></header><main id="main"><section class="hero"><div><p class="eyebrow">ALL YOUR GOOD FOOD, TOGETHER.</p><h1>Your little<br><em>recipe box.</em></h1><p class="subtitle">A happy little home for everything you love to cook.</p></div><div class="heroart" aria-hidden="true"><div class="artpaper"></div><span class="star">✧</span><span class="spoon">♡</span></div></section><div class="toolbar"><div class="search"><span aria-hidden="true">⌕</span><input id="search" aria-label="Search recipes" type="search" placeholder="Find something delicious…" value="${esc(query)}"></div><button class="primary" id="add">＋ <span style="font-size:13px">Add a recipe</span></button></div><section class="box" aria-label="Your recipe box"><div class="tabs" role="tablist" aria-label="Recipe categories">${visibleCategories().map((c,i)=>`<button class="tab" role="tab" id="tab${i}" aria-controls="cards" aria-selected="${c===active}" tabindex="${c===active?0:-1}" style="background:${categoryColors[c]}" data-cat="${c}">${categoryLabel(c)}</button>`).join('')}</div><div class="boxhead"><span id="collectionTitle">${active==='All recipes'?(!cloudUser?'SYD’S FAVORITES':'THE WHOLE COLLECTION'):categoryLabel(active).toUpperCase()}</span><span id="count"></span></div><div class="grid" id="cards" role="tabpanel" aria-labelledby="tab${visibleCategories().indexOf(active)}"></div><div class="boxfoot">A few favorites, a lifetime of good meals.</div></section><p class="savehint">✧ <span id="recipeStorageStatus" role="status">${esc(syncStatus || 'Browsing Syd’s favorites')}</span></p></main><footer class="footer"><span>MADE FOR MESSY COUNTERS & HAPPY TABLES</span><span>With a little <span class="heart">♡</span></span></footer></div>`;
 bindGoogleButton();$('#add').onclick=()=>requireGoogle(true);$('#search').oninput=e=>{query=e.target.value;cards()};document.querySelectorAll('[data-cat]').forEach(b=>{b.onclick=()=>{active=b.dataset.cat;box()};b.onkeydown=e=>{const categories=visibleCategories();let i=categories.indexOf(active);if(['ArrowRight','ArrowLeft','Home','End'].includes(e.key)){e.preventDefault();i=e.key==='Home'?0:e.key==='End'?categories.length-1:(i+(e.key==='ArrowRight'?1:-1)+categories.length)%categories.length;active=categories[i];box();$('#tab'+i).focus()}}});cards()}
 function recipeImageUrl(value) {
  return typeof value === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(value)
@@ -83,7 +83,7 @@ function bindFavorites() {
   };
  });
 }
-function cards(){const shared=active===sharedCategory;let list=(shared?sharedRecipes:recipes).filter(r=>(shared||active==='All recipes'||(active==='My Favorites'?r.favorite:r.category===active))&&(r.title+' '+r.ingredients.join(' ')).toLowerCase().includes(query.toLowerCase()));const visible=list.sort((a,b)=>a.title.localeCompare(b.title,'en',{sensitivity:'base'}));$('#count').textContent=`${list.length} RECIPE${list.length===1?'':'S'}`;$('#cards').innerHTML=visible.length?visible.map((r,i)=>`<article class="card" style="--card-accent:${categoryColors[r.category] || categoryColors['All recipes']}"><button class="cardmain" data-open="${esc(r.id)}" aria-label="Open ${esc(r.title)}${r.linkOnly?' (original recipe, new tab)':''}">${r.image?`<img class="photo" src="${esc(recipeImageUrl(r.image))}" alt="" loading="lazy">`:'<div class="photo" style="display:grid;place-items:center;font-size:66px" aria-hidden="true">✧</div>'}<div class="cardbody"><p class="eyebrow">${esc(categoryLabel(r.category))} <span aria-hidden="true">·</span> ${r.linkOnly?'SAVED LINK':r.demo===false?'YOUR KEEPSAKE':'FROM OUR SAMPLE BOX'}</p><h3>${esc(r.title)}</h3><div class="meta">${r.linkOnly?'Open original ↗':recipeFacts(r,true)}</div></div></button>${shared?'':favoriteButton(r)}${r.linkOnly&&!shared?`<button type="button" class="round edit-link" data-edit="${esc(r.id)}">Edit recipe</button><button type="button" class="round" data-delete="${esc(r.id)}">Delete recipe</button>`:''}</article>`).join(''):`<div class="empty"><h3>A little room for something good.</h3><p>${shared?esc(sharedStatus || 'Syd hasn’t shared any matching recipes yet.'):active==='My Favorites'?'Tap the star on a recipe to add it here.':'Try another search, or add your first recipe here.'}</p></div>`;document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
+function cards(){const shared=!cloudUser||active===sharedCategory;let list=(shared?sharedRecipes:recipes).filter(r=>(active===sharedCategory||active==='All recipes'||(active==='My Favorites'?r.favorite:r.category===active))&&(r.title+' '+r.ingredients.join(' ')).toLowerCase().includes(query.toLowerCase()));const visible=list.sort((a,b)=>a.title.localeCompare(b.title,'en',{sensitivity:'base'}));$('#count').textContent=`${list.length} RECIPE${list.length===1?'':'S'}`;$('#cards').innerHTML=visible.length?visible.map((r,i)=>`<article class="card" style="--card-accent:${categoryColors[r.category] || categoryColors['All recipes']}"><button class="cardmain" data-open="${esc(r.id)}" aria-label="Open ${esc(r.title)}${r.linkOnly?' (original recipe, new tab)':''}">${r.image?`<img class="photo" src="${esc(recipeImageUrl(r.image))}" alt="" loading="lazy">`:'<div class="photo" style="display:grid;place-items:center;font-size:66px" aria-hidden="true">✧</div>'}<div class="cardbody"><p class="eyebrow">${esc(categoryLabel(r.category))} <span aria-hidden="true">·</span> ${r.linkOnly?'SAVED LINK':r.demo===false?'YOUR KEEPSAKE':'FROM OUR SAMPLE BOX'}</p><h3>${esc(r.title)}</h3><div class="meta">${r.linkOnly?'Open original ↗':recipeFacts(r,true)}</div></div></button>${shared?'':favoriteButton(r)}${r.linkOnly&&!shared?`<button type="button" class="round edit-link" data-edit="${esc(r.id)}">Edit recipe</button><button type="button" class="round" data-delete="${esc(r.id)}">Delete recipe</button>`:''}</article>`).join(''):`<div class="empty"><h3>A little room for something good.</h3><p>${shared?esc(sharedStatus || 'Syd hasn’t shared any matching recipes yet.'):active==='My Favorites'?'Tap the star on a recipe to add it here.':'Try another search, or add your first recipe here.'}</p></div>`;document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
  const recipe = (shared?sharedRecipes:recipes).find(r => r.id === b.dataset.open);
  if (recipe?.linkOnly) window.open(safeUrl(recipe.source), '_blank', 'noopener,noreferrer');
  else openRecipe(b.dataset.open,shared);
@@ -436,11 +436,12 @@ if($('#recipeNotesForm')) $('#recipeNotesForm').onsubmit=event=>{
 };
 $('#back').onclick=()=>{if(history.state?.recipe)history.back();else{history.replaceState(null,'',location.pathname);box()}};if($('#remove'))$('#remove').onclick=()=>confirmRecipeDeletion(id);}
 
-window.addEventListener('scroll',()=>{if(selected&&$('.recipebar'))$('.recipebar').classList.toggle('hide',window.scrollY>90)},{passive:true});window.addEventListener('popstate',()=>{if(location.hash.startsWith('#recipe-'))detail(decodeURIComponent(location.hash.slice(8)));else if(location.hash.startsWith('#syd-')){if(cloudUser){active=sharedCategory;detail(decodeURIComponent(location.hash.slice(5)),true)}else box()}else box()});
+window.addEventListener('scroll',()=>{if(selected&&$('.recipebar'))$('.recipebar').classList.toggle('hide',window.scrollY>90)},{passive:true});window.addEventListener('popstate',()=>{if(cloudUser&&location.hash.startsWith('#recipe-'))detail(decodeURIComponent(location.hash.slice(8)));else if(location.hash.startsWith('#syd-'))detail(decodeURIComponent(location.hash.slice(5)),true);else box()});
 $('#category').innerHTML=categories.filter(name=>name!=='All recipes'&&name!=='My Favorites').map(c=>`<option value="${c}">${categoryLabel(c)}</option>`).join('');let pendingSource='';let importing=false;let controller;
 let deviceRecipes = recipes;
 let signingIn = false;
 let cloudUser = null;
+let storageConnected = false;
 let stopCloudWatch;
 let cloudRecipes = new Map();
 let syncStatus = '';
@@ -450,34 +451,42 @@ function showSyncStatus(status) {
  if (label) label.textContent = status;
 }
 function connectRecipeStorage() {
- const user = window.recipeAuth?.user;
- if (cloudUser?.uid === user?.uid) return;
+ const auth = window.recipeAuth;
+ if (!auth) {
+  sharedStatus = 'Syd’s favorites couldn’t load. Try refreshing.';
+  if (!selected) cards();
+  return;
+ }
+ const user = auth.user;
+ if (storageConnected && cloudUser?.uid === user?.uid) return;
+ storageConnected = true;
  stopCloudWatch?.();
  stopSharedWatch?.();
  sharedRecipes = [];
- sharedStatus = '';
- if (active === sharedCategory) active = 'All recipes';
+ sharedStatus = 'Loading Syd’s favorites…';
+ if (active === sharedCategory || (!user && active === 'My Favorites')) active = 'All recipes';
  cloudUser = user;
  cloudRecipes = new Map();
  recipes = user ? [...samples] : deviceRecipes;
- showSyncStatus(user ? 'Loading your cloud recipes…' : 'Saved on this device');
+ showSyncStatus(user ? 'Loading your cloud recipes…' : 'Browsing Syd’s favorites');
  box();
+ const originalRecipeHash = location.hash;
+ stopSharedWatch = auth.watchShared(snapshot => {
+  if (cloudUser?.uid !== user?.uid) return;
+  sharedRecipes = snapshot.docs.map(doc => ({...doc.data(),id:doc.id,demo:false}));
+  sharedStatus = '';
+  if (!selected && originalRecipeHash === location.hash && location.hash.startsWith('#syd-') &&
+      sharedRecipes.some(recipe => recipe.id === decodeURIComponent(location.hash.slice(5)))) {
+   if (user) active = sharedCategory;
+   detail(decodeURIComponent(location.hash.slice(5)),true);
+  } else if (!selected && (!user || active === sharedCategory)) cards();
+ }, () => {
+  if (cloudUser?.uid !== user?.uid) return;
+  sharedStatus = 'Syd’s favorites couldn’t load. Try refreshing.';
+  if (!selected && (!user || active === sharedCategory)) cards();
+ });
  if (!user) return;
  let sharedSynced = false;
- sharedStatus = 'Loading Syd’s favorites…';
-  stopSharedWatch = window.recipeAuth.watchShared(snapshot => {
-   if (cloudUser?.uid !== user.uid) return;
-   sharedRecipes = snapshot.docs.map(doc => ({...doc.data(),id:doc.id,demo:false}));
-   sharedStatus = '';
-   if (location.hash.startsWith('#syd-')) {
-    active = sharedCategory;
-    detail(decodeURIComponent(location.hash.slice(5)),true);
-   } else if (!selected && active === sharedCategory) cards();
-  }, () => {
-   if (cloudUser?.uid !== user.uid) return;
-   sharedStatus = 'Syd’s favorites couldn’t load. Try refreshing.';
-   if (!selected && active === sharedCategory) cards();
-  });
  stopCloudWatch = window.recipeAuth.watch(user, snapshot => {
   if (cloudUser?.uid !== user.uid) return;
   if (!sharedSynced && window.recipeAuth.isSharedOwner(user) &&
@@ -490,7 +499,10 @@ function connectRecipeStorage() {
   cloudRecipes = new Map(snapshot.docs.map(doc => [doc.id, {...doc.data(), id:doc.id}]));
   recipes = [...cloudRecipes.values()].filter(recipe => !recipe.deleted);
   for (const sample of samples) if (!cloudRecipes.has(sample.id)) recipes.push(sample);
-  if (!selected) cards();
+  if (!selected && originalRecipeHash === location.hash && location.hash.startsWith('#recipe-') &&
+      recipes.some(recipe => recipe.id === decodeURIComponent(location.hash.slice(8)))) {
+   detail(decodeURIComponent(location.hash.slice(8)));
+  } else if (!selected) cards();
   showSyncStatus(snapshot.metadata.hasPendingWrites ? 'Saving to cloud…' :
    snapshot.metadata.fromCache ? 'Waiting to connect…' : 'Synced to your Google account');
  }, () => showSyncStatus('Cloud sync unavailable. Reload to try again.'));
@@ -575,9 +587,7 @@ $('#accountSignOut').onclick = async () => {
 async function requireGoogle(openAfterSignIn) {
  const auth = window.recipeAuth;
  if (!auth) {
-  // Keep the existing add flow usable until the Firebase project is connected.
-  if (openAfterSignIn) openImport();
-  else toast('Google sign-in is not connected yet.');
+  toast('Google sign-in is unavailable. Try refreshing.');
   return;
  }
  if (signingIn) return;
@@ -801,4 +811,4 @@ $('#manualForm').onsubmit = async event => {
   }
  } finally { submit.disabled = false; }
 };
-box();if(location.hash.startsWith('#recipe-'))detail(decodeURIComponent(location.hash.slice(8)));if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+box();if('serviceWorker'in navigator && document.querySelector('script[src^="app.js"]'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
