@@ -83,12 +83,35 @@ function bindFavorites() {
   };
  });
 }
-function cards(){const shared=!cloudUser||active===sharedCategory;let list=(shared?sharedRecipes:recipes).filter(r=>(active===sharedCategory||active==='All recipes'||(active==='My Favorites'?r.favorite:r.category===active))&&(r.title+' '+r.ingredients.join(' ')).toLowerCase().includes(query.toLowerCase()));const visible=list.sort((a,b)=>a.title.localeCompare(b.title,'en',{sensitivity:'base'}));$('#count').textContent=`${list.length} RECIPE${list.length===1?'':'S'}`;$('#cards').innerHTML=visible.length?visible.map((r,i)=>`<article class="card" style="--card-accent:${categoryColors[r.category] || categoryColors['All recipes']}"><button class="cardmain" data-open="${esc(r.id)}" aria-label="Open ${esc(r.title)}${r.linkOnly?' (original recipe, new tab)':''}">${r.image?`<img class="photo" src="${esc(recipeImageUrl(r.image))}" alt="" loading="lazy">`:'<div class="photo" style="display:grid;place-items:center;font-size:66px" aria-hidden="true">✧</div>'}<div class="cardbody"><p class="eyebrow">${esc(categoryLabel(r.category))} <span aria-hidden="true">·</span> ${r.linkOnly?'SAVED LINK':r.demo===false?'YOUR KEEPSAKE':'FROM OUR SAMPLE BOX'}</p><h3>${esc(r.title)}</h3><div class="meta">${r.linkOnly?'Open original ↗':recipeFacts(r,true)}</div></div></button>${shared?'':favoriteButton(r)}${r.linkOnly&&!shared?`<button type="button" class="round edit-link" data-edit="${esc(r.id)}">Edit recipe</button><button type="button" class="round" data-delete="${esc(r.id)}">Delete recipe</button>`:''}</article>`).join(''):`<div class="empty"><h3>A little room for something good.</h3><p>${shared?esc(sharedStatus || 'Syd hasn’t shared any matching recipes yet.'):active==='My Favorites'?'Tap the star on a recipe to add it here.':'Try another search, or add your first recipe here.'}</p></div>`;document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
+function saveToBoxButton(recipe) {
+ return `<button type="button" class="primary" data-save-shared="${esc(recipe.id)}">Save to my box</button>`;
+}
+
+function bindSharedSaveButtons() {
+ app.querySelectorAll('[data-save-shared]').forEach(button => {
+  button.onclick = async () => {
+   button.disabled = true;
+   try {
+    if (!await requireGoogle(false)) return;
+    const auth = window.recipeAuth;
+    const saved = await auth.saveSharedCopy(auth.user, button.dataset.saveShared);
+    toast(saved ? 'Recipe saved to your box.' : 'This recipe is already in your box.');
+   } catch {
+    toast('Couldn’t save this recipe. Try again.');
+   } finally {
+    button.disabled = false;
+   }
+  };
+ });
+}
+
+function cards(){const shared=!cloudUser||active===sharedCategory;let list=(shared?sharedRecipes:recipes).filter(r=>(active===sharedCategory||active==='All recipes'||(active==='My Favorites'?r.favorite:r.category===active))&&(r.title+' '+r.ingredients.join(' ')).toLowerCase().includes(query.toLowerCase()));const visible=list.sort((a,b)=>a.title.localeCompare(b.title,'en',{sensitivity:'base'}));$('#count').textContent=`${list.length} RECIPE${list.length===1?'':'S'}`;$('#cards').innerHTML=visible.length?visible.map((r,i)=>`<article class="card" style="--card-accent:${categoryColors[r.category] || categoryColors['All recipes']}"><button class="cardmain" data-open="${esc(r.id)}" aria-label="Open ${esc(r.title)}${r.linkOnly?' (original recipe, new tab)':''}">${r.image?`<img class="photo" src="${esc(recipeImageUrl(r.image))}" alt="" loading="lazy">`:'<div class="photo" style="display:grid;place-items:center;font-size:66px" aria-hidden="true">✧</div>'}<div class="cardbody"><p class="eyebrow">${esc(categoryLabel(r.category))} <span aria-hidden="true">·</span> ${r.linkOnly?'SAVED LINK':r.demo===false?'YOUR KEEPSAKE':'FROM OUR SAMPLE BOX'}</p><h3>${esc(r.title)}</h3><div class="meta">${r.linkOnly?'Open original ↗':recipeFacts(r,true)}</div></div></button>${shared?(r.linkOnly?saveToBoxButton(r):''):favoriteButton(r)}${r.linkOnly&&!shared?`<button type="button" class="round edit-link" data-edit="${esc(r.id)}">Edit recipe</button><button type="button" class="round" data-delete="${esc(r.id)}">Delete recipe</button>`:''}</article>`).join(''):`<div class="empty"><h3>A little room for something good.</h3><p>${shared?esc(sharedStatus || 'Syd hasn’t shared any matching recipes yet.'):active==='My Favorites'?'Tap the star on a recipe to add it here.':'Try another search, or add your first recipe here.'}</p></div>`;document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
  const recipe = (shared?sharedRecipes:recipes).find(r => r.id === b.dataset.open);
  if (recipe?.linkOnly) window.open(safeUrl(recipe.source), '_blank', 'noopener,noreferrer');
  else openRecipe(b.dataset.open,shared);
  });
  bindFavorites();
+ bindSharedSaveButtons();
  document.querySelectorAll('[data-edit]').forEach(button => { button.onclick = () => editRecipe(button.dataset.edit); });
  document.querySelectorAll('[data-delete]').forEach(button=>{
   button.onclick=()=>confirmRecipeDeletion(button.dataset.delete);
@@ -412,7 +435,7 @@ function openCookingMode(recipe) {
  document.addEventListener('visibilitychange',keepAwake);
  keepAwake();
 }
-function detail(id,shared=false){let r=(shared?sharedRecipes:recipes).find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero ${r.photoOnly?'recipe-scan':''}" src="${esc(recipeImageUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(categoryLabel(r.category))} · ${shared?'FROM SYD’S FAVORITES':r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p>${shared?'':`<div class="recipe-actions"><button type="button" id="editRecipe" class="round edit-link">Edit recipe</button>${pairingCategory(r.category)?'<button type="button" id="serveWith" class="round edit-link">Serve with</button>':''}${favoriteButton(r)}</div>${recipePairings(r)}`}${r.photoOnly?'':`<div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button>${r.steps.length?'<button class="primary jump-instructions" id="startCooking">Start cooking</button>':''}<h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${(r.adapted?r.steps:cookingSteps(instructionsWithAmounts(r.steps,r.ingredients))).map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}`}${shared?'':`<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section>`}${r.source?`<a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>`:''}${!shared&&r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Delete recipe</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});bindFavorites();
+function detail(id,shared=false){let r=(shared?sharedRecipes:recipes).find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero ${r.photoOnly?'recipe-scan':''}" src="${esc(recipeImageUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(categoryLabel(r.category))} · ${shared?'FROM SYD’S FAVORITES':r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p>${shared?`<div class="recipe-actions">${saveToBoxButton(r)}</div>`:`<div class="recipe-actions"><button type="button" id="editRecipe" class="round edit-link">Edit recipe</button>${pairingCategory(r.category)?'<button type="button" id="serveWith" class="round edit-link">Serve with</button>':''}${favoriteButton(r)}</div>${recipePairings(r)}`}${r.photoOnly?'':`<div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button>${r.steps.length?'<button class="primary jump-instructions" id="startCooking">Start cooking</button>':''}<h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${(r.adapted?r.steps:cookingSteps(instructionsWithAmounts(r.steps,r.ingredients))).map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}`}${shared?'':`<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section>`}${r.source?`<a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>`:''}${!shared&&r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Delete recipe</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});bindFavorites();bindSharedSaveButtons();
  app.querySelectorAll('[data-pairing]').forEach(link => link.onclick = event => {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   event.preventDefault();
@@ -593,7 +616,7 @@ async function requireGoogle(openAfterSignIn) {
  if (signingIn) return;
  if (auth.user) {
   if (openAfterSignIn) openImport();
-  return;
+  return true;
  }
  signingIn = true;
  try {
@@ -601,6 +624,7 @@ async function requireGoogle(openAfterSignIn) {
   connectRecipeStorage();
   bindGoogleButton();
   if (openAfterSignIn) openImport();
+  return true;
  } catch (error) {
   if (error.code !== 'auth/popup-closed-by-user') toast('Could not sign in with Google. Try again.');
  } finally {

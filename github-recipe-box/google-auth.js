@@ -29,6 +29,17 @@ if (config) {
     window.recipeAuth = {
       isSharedOwner: user => user?.uid === sharedOwner,
       watchShared: (next, error) => db.onSnapshot(shared, next, error),
+      async saveSharedCopy(user, id) {
+        if (user.uid === sharedOwner) return false;
+        const copy = privateRef(user, 'syd-copy-' + id);
+        return db.runTransaction(firestore, async transaction => {
+          if ((await transaction.get(copy)).exists()) return false;
+          const recipe = (await transaction.get(db.doc(shared, id))).data();
+          if (!recipe) throw new Error('Shared recipe unavailable');
+          transaction.set(copy, {...shareableRecipe(recipe), demo:false});
+          return true;
+        });
+      },
       async syncShared(user, privateDocs) {
         if (user.uid !== sharedOwner) return;
         const published = await db.getDocsFromServer(shared);
