@@ -97,7 +97,7 @@ function editRecipe(id) {
  $('#editChef').value = recipe.chef || '';
  $('#editIngredients').value = recipe.ingredients.join('\n');
  $('#editSteps').value = recipe.steps.join('\n');
- $('#editDetails').hidden = Boolean(recipe.linkOnly);
+ $('#editDetails').hidden = Boolean(recipe.linkOnly || recipe.photoOnly);
  $('#editStatus').textContent = '';
  $('#cancelRecipeEdit').onclick = () => editor.close();
  form.onsubmit = event => {
@@ -106,10 +106,10 @@ function editRecipe(id) {
   if (!current || cloudUser?.uid !== owner) { editor.close(); return; }
   const title = $('#editTitle').value.trim();
   const lines = selector => $(selector).value.split('\n').map(line => line.trim()).filter(Boolean);
-  const details = recipe.linkOnly ? {} : {
+  const details = (recipe.linkOnly || recipe.photoOnly) ? {} : {
    chef:$('#editChef').value.trim(), ingredients:lines('#editIngredients'), steps:lines('#editSteps')
   };
-  if (!title || (!recipe.linkOnly && (!details.ingredients.length || !details.steps.length))) {
+  if (!title || (!recipe.linkOnly && !recipe.photoOnly && (!details.ingredients.length || !details.steps.length))) {
    $('#editStatus').textContent = 'Add a title, at least one ingredient, and at least one step.';
    return;
   }
@@ -319,10 +319,10 @@ function openCookingMode(recipe) {
  document.addEventListener('visibilitychange',keepAwake);
  keepAwake();
 }
-function detail(id){let r=recipes.find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero" src="${esc(recipeImageUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(r.category)} · ${r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p><div class="recipe-actions"><button type="button" id="editRecipe" class="round edit-link">Edit recipe</button>${favoriteButton(r)}</div><div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button>${r.steps.length?'<button class="primary jump-instructions" id="startCooking">Start cooking</button>':''}<h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${(r.adapted?r.steps:cookingSteps(instructionsWithAmounts(r.steps,r.ingredients))).map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section><a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>${r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Delete recipe</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});bindFavorites();
+function detail(id){let r=recipes.find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero ${r.photoOnly?'recipe-scan':''}" src="${esc(recipeImageUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(r.category)} · ${r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p><div class="recipe-actions"><button type="button" id="editRecipe" class="round edit-link">Edit recipe</button>${favoriteButton(r)}</div>${r.photoOnly?'':`<div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button>${r.steps.length?'<button class="primary jump-instructions" id="startCooking">Start cooking</button>':''}<h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${(r.adapted?r.steps:cookingSteps(instructionsWithAmounts(r.steps,r.ingredients))).map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}`}<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section>${r.source?`<a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>`:''}${r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Delete recipe</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});bindFavorites();
 $('#editRecipe').onclick=()=>editRecipe(id);
 if($('#startCooking')) $('#startCooking').onclick=()=>openCookingMode(r);
-$('#jumpInstructions').onclick=()=>{
+if($('#jumpInstructions')) $('#jumpInstructions').onclick=()=>{
  const heading=$('#recipeInstructions');
  heading.focus({preventScroll:true});
  heading.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
@@ -473,14 +473,50 @@ async function requireGoogle(openAfterSignIn) {
   signingIn = false;
  }
 }
-function openImport(){ $('#recipePastePanel').hidden=true;$('#recipePaste').value='';$('#pasteStatus').textContent='';fallback.hidden=true;failedImport=null;$('#manualForm').hidden=true;$('#importStatus').textContent='';$('#importForm').reset();$('#manualForm').reset();$('#manualPhotoStatus').textContent='';dialog.showModal();$('#url').focus()}
+function setImportMode(mode) {
+ const fromPhoto = mode === 'photo';
+ document.querySelectorAll('[name="recipeMode"]').forEach(input => { input.checked = input.value === mode; });
+ $('#photoImportForm').hidden = !fromPhoto;
+ $('#importForm').hidden = fromPhoto;
+ $('#importStatus').textContent = '';
+ fallback.hidden = true;
+ failedImport = null;
+ if (fromPhoto) controller?.abort();
+}
+document.querySelectorAll('[name="recipeMode"]').forEach(input => {
+ input.onchange = () => setImportMode(input.value);
+});
+$('#photoCategory').replaceChildren(...categories.filter(name=>name!=='All recipes'&&name!=='Favorites').map(name=>new Option(name)));
+$('#photoImportForm').onsubmit = async event => {
+ event.preventDefault();
+ const owner = cloudUser?.uid;
+ const form = event.currentTarget;
+ const file = $('#recipePhoto').files[0];
+ const title = $('#photoTitle').value.trim();
+ const category = $('#photoCategory').value;
+ const status = $('#photoImportStatus');
+ const submit = form.querySelector('button');
+ if (!title || !file) { status.textContent = 'Add a title and choose a photo.'; return; }
+ submit.disabled = true;
+ status.textContent = 'Preparing photo…';
+ try {
+  const image = await resizeRecipePhoto(file);
+  if (!dialog.open || form.hidden || owner !== cloudUser?.uid || $('#recipePhoto').files[0] !== file) return;
+  status.textContent = '';
+  saveImportedCard({id:crypto.randomUUID(),demo:false,photoOnly:true,title,category,image,ingredients:[],steps:[]});
+ } catch (error) {
+  status.textContent = error.message.startsWith('Choose') || error.message.startsWith('This photo')
+   ? error.message : 'Could not open that photo. Try a JPEG or PNG.';
+ } finally { submit.disabled = false; }
+};
+function openImport(){ setImportMode('link');$('#photoImportForm').reset();$('#photoImportStatus').textContent=''; $('#recipePastePanel').hidden=true;$('#recipePaste').value='';$('#pasteStatus').textContent='';fallback.hidden=true;failedImport=null;$('#manualForm').hidden=true;$('#importStatus').textContent='';$('#importForm').reset();$('#manualForm').reset();$('#manualPhotoStatus').textContent='';dialog.showModal();$('#url').focus()}
 dialog.querySelector('.close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{controller?.abort();importing=false;$('#importForm button').disabled=false});
 function extractRecipe(html){const doc=new DOMParser().parseFromString(html,'text/html');let found;function walk(x){if(!x||typeof x!=='object')return;if((Array.isArray(x['@type'])?x['@type']:[x['@type']]).includes('Recipe')&&!found)found=x;Object.values(x).forEach(v=>{if(Array.isArray(v))v.forEach(walk);else if(typeof v==='object')walk(v)})}doc.querySelectorAll('script[type="application/ld+json"]').forEach(s=>{try{walk(JSON.parse(s.textContent))}catch{}});return found}
 function plain(v){const d=new DOMParser().parseFromString(String(v||''),'text/html');return d.body.textContent||''}
 function normalize(x){let steps=[];function flatten(a){if(Array.isArray(a))a.forEach(flatten);else if(typeof a==='string')steps.push(plain(a));else if(a?.itemListElement)flatten(a.itemListElement);else if(a?.text)steps.push(plain(a.text))}flatten(x.recipeInstructions);const authors=Array.isArray(x.author)?x.author:[x.author];const img=Array.isArray(x.image)?x.image[0]:x.image;return {id:crypto.randomUUID(),demo:false,title:plain(x.name),chef:authors.map(a=>typeof a==='string'?a:a?.name||'').filter(Boolean).join(', '),image:safeUrl(typeof img==='string'?img:img?.url),category:$('#category').value,ingredients:(x.recipeIngredient||[]).map(plain),steps,prepTime:formatDuration(x.prepTime),cookTime:formatDuration(x.cookTime),time:formatDuration(x.totalTime),servings:plain(Array.isArray(x.recipeYield)?x.recipeYield.join(', '):x.recipeYield)}}
 function saveImportedCard(recipe) {
  const previous = recipes;
- const existing = recipes.find(item => item.linkOnly && item.source === recipe.source);
+ const existing = recipes.find(item => recipe.source && item.linkOnly && item.source === recipe.source);
  if (existing) { recipe.id = existing.id; if (existing.favorite) recipe.favorite = true; }
  recipes = [recipe,...recipes.filter(item => item.id !== recipe.id)];
  if (!save()) { recipes = previous; return; }
@@ -581,7 +617,7 @@ $('#importForm').onsubmit = async event => {
  $('#manualForm').hidden = true;
  failedImport = null;
  $('#importStatus').textContent = 'Trying to import the recipe…';
- const stillCurrent = () => dialog.open && controller === request && owner === cloudUser?.uid;
+ const stillCurrent = () => dialog.open && !$('#importForm').hidden && controller === request && owner === cloudUser?.uid;
  let timedOut = false;
  const timer = setTimeout(() => { timedOut = true; request.abort(); },12000);
  try {

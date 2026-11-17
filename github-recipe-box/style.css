@@ -69,3 +69,12 @@ body{background:radial-gradient(ellipse at 8% 16%,#f2a8c421,transparent 34%),rad
 .edit-link{width:auto;font-size:14px;padding:0 12px;text-decoration:underline}.card .edit-link{margin-left:12px}#editRecipeDialog{max-height:calc(100dvh - 32px);overflow:auto}#editRecipeForm textarea{resize:vertical}
 
 .card{position:relative}.favorite-star{background:#fff9ef;color:#775100;border:1px solid #e6d6ae;width:44px;height:44px;padding:0;font-size:24px;line-height:1}.card .favorite-star{position:absolute;top:12px;right:12px;z-index:1}.favorite-star[aria-pressed=true]{background:#ffe4a1}.recipe-actions{display:flex;align-items:center;gap:8px;margin-top:8px}
+
+.import-modes{display:flex;gap:4px;margin:16px 0;padding:4px;border:0;border-radius:14px;background:#efe6f7}
+.mode-legend{font-size:12px;font-weight:700}
+.import-modes label{position:relative;flex:1;margin:0}
+.import-modes input{position:absolute;opacity:0;width:1px;height:1px}
+.import-modes span{display:grid;place-items:center;min-height:44px;padding:0 8px;border-radius:10px;cursor:pointer}
+.import-modes input:checked+span{background:#fff9f0;font-weight:700;box-shadow:0 1px 4px #1c122027}
+.import-modes input:focus-visible+span{outline:3px solid #326cbc}
+.recipehero.recipe-scan{height:auto;max-height:none;object-fit:contain}
