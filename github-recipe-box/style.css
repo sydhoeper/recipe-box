@@ -30,3 +30,12 @@ body{background:radial-gradient(ellipse at 8% 16%,#f2a8c421,transparent 34%),rad
 .recipe-notes textarea{display:block;width:100%;padding:12px;font:inherit;background:#fffefb}
 .recipe-notes .primary{margin-top:12px}
 #paging .round{font-size:13px;width:auto;padding:0 12px}
+
+.profile-button{width:48px;height:48px;padding:0;display:grid;place-items:center;overflow:hidden;background:#e9ddf9;font-size:20px}
+.profile-button img{width:100%;height:100%;object-fit:cover}
+#accountDrawer{position:fixed;inset:0 0 0 auto;margin:0;width:min(100%,380px);height:100dvh;max-height:none;border-radius:20px 0 0 20px}
+#accountDrawer h2{padding-right:34px}
+#accountName{font-weight:700}
+#accountEmail{overflow-wrap:anywhere}
+#accountSignOut{margin-top:24px}
+@media(max-width:600px){#accountDrawer{inset:auto 0 0;margin:0;width:100%;max-width:none;height:auto;padding-bottom:calc(30px + env(safe-area-inset-bottom));border-radius:20px 20px 0 0}}

@@ -130,19 +130,49 @@ function saveCloudRecipes() {
 function bindGoogleButton() {
  const button = $('#googleSignIn');
  if (!button) return;
- button.textContent = window.recipeAuth?.user ? 'Sign out' : 'Continue with Google';
- button.onclick = async () => {
-  if (!window.recipeAuth?.user) return requireGoogle(false);
-  try {
-   await window.recipeAuth.signOut();
-   connectRecipeStorage();
-   bindGoogleButton();
-  } catch {
-   toast('Could not sign out. Try again.');
-  }
+ const user = window.recipeAuth?.user;
+ button.classList.toggle('profile-button', Boolean(user));
+ if (!user) {
+  button.textContent = 'Continue with Google';
+  button.removeAttribute('aria-label');
+  button.removeAttribute('aria-haspopup');
+  button.onclick = () => requireGoogle(false);
+  return;
+ }
+ const initial = (user.displayName || user.email || 'G').trim().charAt(0).toUpperCase();
+ button.textContent = initial;
+ const photo = safeUrl(user.photoURL);
+ if (photo) {
+  const image = new Image();
+  image.alt = '';
+  image.onload = () => button.replaceChildren(image);
+  image.src = photo;
+ }
+ button.setAttribute('aria-label', 'Open Google account menu');
+ button.setAttribute('aria-haspopup', 'dialog');
+ button.onclick = () => {
+  $('#accountName').textContent = user.displayName || 'Google account';
+  $('#accountEmail').textContent = user.email || '';
+  $('#accountDrawer').showModal();
  };
+
 }
 window.addEventListener('recipe-auth-ready', () => { connectRecipeStorage(); bindGoogleButton(); });
+$('#accountClose').onclick = () => $('#accountDrawer').close();
+$('#accountSignOut').onclick = async () => {
+ const signOut = $('#accountSignOut');
+ signOut.disabled = true;
+ try {
+  await window.recipeAuth.signOut();
+  $('#accountDrawer').close();
+  connectRecipeStorage();
+  bindGoogleButton();
+ } catch {
+  $('#accountStatus').textContent = 'Could not sign out. Try again.';
+ } finally {
+  signOut.disabled = false;
+ }
+};
 async function requireGoogle(openAfterSignIn) {
  const auth = window.recipeAuth;
  if (!auth) {
