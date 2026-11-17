@@ -53,3 +53,15 @@ body{background:radial-gradient(ellipse at 8% 16%,#f2a8c421,transparent 34%),rad
 #startCooking{margin-bottom:14px}
 
 .delete-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}.delete-confirm{background:#8d2238;color:white}.delete-confirm:hover{background:#731a2d}[data-delete]{width:auto;font-size:13px;margin:0 12px 8px;padding:0 12px}
+
+#importDialog{max-height:calc(100dvh - 32px);overflow:auto}
+.import-failure{background:#f4edff;padding:16px;border-radius:14px}
+.import-failure h3,#manualForm h3{margin:0 0 8px;font-size:23px}
+.import-failure p{margin:0 0 8px;color:var(--ink)}
+.import-failure a{display:inline-flex;align-items:center;min-height:44px;font-weight:700}
+.import-options{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin:14px 0}
+#saveLinkOnly{font-size:14px;padding:0 12px;width:auto}
+#recipePastePanel,#manualForm{margin-top:16px;border-top:1px solid #ddd3e5;padding-top:16px}
+#recipePastePanel label{font-weight:700}
+#pasteHelp,#pasteStatus{margin:6px 0 10px}
+#recipePaste{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:12px;margin-bottom:12px}

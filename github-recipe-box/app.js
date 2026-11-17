@@ -375,7 +375,7 @@ async function requireGoogle(openAfterSignIn) {
   signingIn = false;
  }
 }
-function openImport(){ fallback.hidden=true;failedImport=null;$('#manualForm').hidden=true;$('#importStatus').textContent='';$('#importForm').reset();$('#manualForm').reset();dialog.showModal();$('#url').focus()}
+function openImport(){ $('#recipePastePanel').hidden=true;$('#recipePaste').value='';$('#pasteStatus').textContent='';fallback.hidden=true;failedImport=null;$('#manualForm').hidden=true;$('#importStatus').textContent='';$('#importForm').reset();$('#manualForm').reset();dialog.showModal();$('#url').focus()}
 dialog.querySelector('.close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{controller?.abort();importing=false;$('#importForm button').disabled=false});
 function extractRecipe(html){const doc=new DOMParser().parseFromString(html,'text/html');let found;function walk(x){if(!x||typeof x!=='object')return;if((Array.isArray(x['@type'])?x['@type']:[x['@type']]).includes('Recipe')&&!found)found=x;Object.values(x).forEach(v=>{if(Array.isArray(v))v.forEach(walk);else if(typeof v==='object')walk(v)})}doc.querySelectorAll('script[type="application/ld+json"]').forEach(s=>{try{walk(JSON.parse(s.textContent))}catch{}});return found}
 function plain(v){const d=new DOMParser().parseFromString(String(v||''),'text/html');return d.body.textContent||''}
@@ -411,9 +411,46 @@ function showImportChoices(card, owner, message) {
  fallback.hidden = false;
  $('#importFailureTitle').focus();
 }
+function splitPastedRecipe(text) {
+ const result = {ingredients:[], steps:[]};
+ let section = '';
+ for (const raw of text.split(/\r?\n/)) {
+  const line = raw.trim().replace(/^#{1,6}\s+/, '');
+  if (!line) continue;
+  const header = line.match(/^(ingredients?(?: list)?|what you(?:'ll|’ll| will) need|instructions?|directions?|method|preparation|steps|how to make(?: .+)?|notes?|nutrition(?: facts)?|equipment|storage|tips)(?:\s*:\s*(.*)|\s*)$/i);
+  if (header) {
+   const name = header[1].toLowerCase();
+   if (/^(?:ingredient|what you)/.test(name)) section = 'ingredients';
+   else if (/^(?:instruction|direction|method|preparation|step|how to make)/.test(name)) section = 'steps';
+   else section = '';
+   if (section && header[2]) result[section].push(header[2]);
+   continue;
+  }
+  if (!section || /^(?:cook mode|prevent your screen|^\d+x\s|print recipe|pin recipe)/i.test(line)) continue;
+  result[section].push(line.replace(/^(?:[•●*-]\s*|(?:step\s+)?\d+[.)]\s+)/i, ''));
+ }
+ return result;
+}
 $('#enterManually').onclick = () => {
+ $('#recipePastePanel').hidden = false;
+ $('#recipePaste').focus();
+};
+$('#extractPastedRecipe').onclick = () => {
+ const pasted = $('#recipePaste').value.trim();
+ if (!pasted) {
+  $('#pasteStatus').textContent = 'Paste the recipe first.';
+  $('#recipePaste').focus();
+  return;
+ }
+ const parts = splitPastedRecipe(pasted);
+ for (const [field, values] of [['#ingredients',parts.ingredients],['#instructions',parts.steps]]) {
+  if (values.length) $(field).value = values.join('\n');
+ }
  $('#manualForm').hidden = false;
- $('#recipeTitle').focus();
+ $('#pasteStatus').textContent = parts.ingredients.length && parts.steps.length
+  ? 'Review the ingredients and steps below before saving.'
+  : 'I couldn’t identify both sections. Add “Ingredients” and “Instructions” headings to the pasted text and try again, or fill in the missing section below.';
+ $('#pasteStatus').focus();
 };
 $('#saveLinkOnly').onclick = () => {
  if (failedImport && failedImport.owner === cloudUser?.uid) saveImportedCard(failedImport.card);
@@ -440,6 +477,9 @@ $('#importForm').onsubmit = async event => {
  const submit = $('#importForm button');
  submit.disabled = true;
  fallback.hidden = true;
+ $('#recipePastePanel').hidden = true;
+ $('#recipePaste').value = '';
+ $('#pasteStatus').textContent = '';
  $('#manualForm').hidden = true;
  failedImport = null;
  $('#importStatus').textContent = 'Trying to import the recipe…';
