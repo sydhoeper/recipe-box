@@ -5,10 +5,10 @@ let sharedRecipes = [];
 let sharedStatus = '';
 let stopSharedWatch;
 const visibleCategories = () => cloudUser && !window.recipeAuth.isSharedOwner(cloudUser)
- ? [...categories,sharedCategory] : categories;
+ ? [categories[0],sharedCategory,...categories.slice(1)] : categories;
 const categoryColors = {
  'All recipes':'#f2a8c4', Mains:'#f7bd91', Soups:'#f3dc87', Sides:'#9fd7be',
- Salads:'#d5e8a9', Desserts:'#9bc7ea', Cocktails:'#c2afe8', Favorites:'#f8dd96', [sharedCategory]:'#f2a8c4'
+ Salads:'#d5e8a9', Desserts:'#9bc7ea', Cocktails:'#c2afe8', Favorites:'#ad8bdc', [sharedCategory]:'#f2a8c4'
 };
 const samples=[{"id": "wild-rice-mushroom-soup", "demo": false, "adapted": true, "title": "Wild Rice and Mushroom Soup", "category": "Soups", "chef": "Jamie Vespa MS, RD · Dishing Out Health", "time": "1 hr 25 min", "servings": "6 servings", "image": "https://dishingouthealth.com/wp-content/uploads/2020/09/WildRiceMushroomSoup_Square-300x300.jpg", "source": "https://dishingouthealth.com/wild-rice-mixed-mushroom-soup/", "ingredients": ["2 Tbsp olive oil", "2 Tbsp unsalted butter", "1 yellow onion, finely chopped", "¾ cup finely chopped carrots", "½ cup finely chopped celery", "8–12 oz sliced cremini mushrooms (or cremini and shiitake)", "4 garlic cloves, minced", "1 cup dry wild rice blend", "1 Tbsp poultry seasoning (or Herbes de Provence)", "1 tsp kosher salt", "½ tsp black pepper", "4 cups lower-sodium vegetable broth", "1 cup water", "⅔ cup heavy cream (or cashew cream)", "⅓ cup finely grated Parmesan"], "steps": ["Measure ⅔ cup cream; leave at room temperature.", "Heat 2 Tbsp oil and 2 Tbsp butter over medium-high heat. Soften 1 chopped onion, ¾ cup carrots and ½ cup celery for 8 minutes.", "Add 8–12 oz mushrooms and 4 minced garlic cloves. Cook 6–8 minutes, stirring occasionally, until golden.", "Toast 1 cup rice in the pot for 1–2 minutes. Add 1 Tbsp poultry seasoning, 1 tsp salt and ½ tsp pepper.", "Pour in 4 cups broth and 1 cup water. Bring to a gentle boil. Cover; simmer over medium-low heat for 45–60 minutes, until rice is tender.", "Stir in ⅔ cup cream. Gradually add ⅓ cup Parmesan, stirring. Take off heat and serve."]}];
 const storageKey='little-recipe-box-v1', seedKey='little-recipe-box-default-wild-rice-v1';
