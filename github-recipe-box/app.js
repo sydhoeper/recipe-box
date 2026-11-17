@@ -93,6 +93,33 @@ function instructionsWithAmounts(steps, ingredients) {
   return step;
  });
 }
+function cookingSteps(directions) {
+ const action = /^(?:add|arrange|bake|beat|blend|bring|brush|chill|chop|combine|cook|cover|cut|discard|divide|drain|fold|garnish|heat|knead|let|line|melt|mix|peel|place|pour|preheat|reduce|remove|reserve|rest|return|roast|season|serve|set|simmer|slice|sprinkle|stir|strain|take|taste|toast|toss|transfer|turn|uncover|whisk)\b/i;
+ const continuation = /^(?:stir(?:ring)? (?:occasionally|constantly|frequently)|cook(?:ing)? (?:until|for)|simmer(?:ing)? (?:until|for))\b/i;
+ const breaks = /(?:[.!?]\s+|;\s+|,?\s+(?:and\s+)?then\s+|,\s+and\s+|\s+and\s+)(?=[a-z])/gi;
+ return directions.flatMap(direction => {
+  let start = 0;
+  const chunks = [];
+  for (const match of direction.matchAll(breaks)) {
+   const next = match.index + match[0].length;
+   const rest = direction.slice(next);
+   if (!action.test(rest)) continue;
+   if (!/^[.!?;]/.test(match[0]) && !/\bthen\b/i.test(match[0]) &&
+       continuation.test(rest) && !/^(?:add|bring|reduce|cover|uncover|transfer)\b/i.test(direction.slice(start))) continue;
+   // Keep combined motions together, but split distinct actions joined by “then”.
+   if (/^\s*and\s*$/i.test(match[0]) &&
+       /^(?:mix|stir|whisk|toss|beat)\b/i.test(rest)) continue;
+   const cut = match.index + (/^[.!?]/.test(match[0]) ? 1 : 0);
+   chunks.push(direction.slice(start, cut).trim());
+   start = next;
+  }
+  chunks.push(direction.slice(start).trim());
+  return chunks.filter(Boolean).map(chunk => {
+   const capitalized = chunk.replace(/^[a-z]/, letter => letter.toUpperCase());
+   return /[.!?]$/.test(capitalized) ? capitalized : capitalized + '.';
+  });
+ });
+}
 const factShapes = {
  prep:'<path d="M4 15h16M6 15v4h12v-4M8 12l6-7 3 3-5 4"/>',
  cook:'<path d="M4 10h16l-2 9H6zM3 10h18M8 7h8M12 7V5"/>',
@@ -111,7 +138,7 @@ function formatDuration(value) {
  if (!parts) return plain(value);
  return parts.slice(1).map((n,i)=>Number(n)?n+' '+['days','hr','min'][i]:'').filter(Boolean).join(' ');
 }
-function detail(id){let r=recipes.find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero" src="${esc(safeUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(r.category)} · ${r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p><div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button><h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${(r.adapted?r.steps:instructionsWithAmounts(r.steps,r.ingredients)).map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section><a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>${r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Remove from my box</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});$('#jumpInstructions').onclick=()=>{
+function detail(id){let r=recipes.find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero" src="${esc(safeUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(r.category)} · ${r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p><div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button><h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${(r.adapted?r.steps:cookingSteps(instructionsWithAmounts(r.steps,r.ingredients))).map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section><a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>${r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Remove from my box</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});$('#jumpInstructions').onclick=()=>{
  const heading=$('#recipeInstructions');
  heading.focus({preventScroll:true});
  heading.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
