@@ -1,14 +1,14 @@
 const $=s=>document.querySelector(s), app=$('#app'), dialog=$('#importDialog');
 const categories=['All recipes','Mains','Soups','Sides','Salads','Desserts','Cocktails','Favorites'];
-const sharedCategory = "Syd’s Recipes";
+const sharedCategory = "Syd’s Favorites";
 let sharedRecipes = [];
 let sharedStatus = '';
 let stopSharedWatch;
-const visibleCategories = () => cloudUser && !window.recipeAuth.isSharedOwner(cloudUser)
- ? [categories[0],sharedCategory,...categories.slice(1)] : categories;
+const visibleCategories = () => cloudUser
+ ? [...categories,sharedCategory] : categories;
 const categoryColors = {
- 'All recipes':'#f2a8c4', Mains:'#f7bd91', Soups:'#f3dc87', Sides:'#9fd7be',
- Salads:'#d5e8a9', Desserts:'#9bc7ea', Cocktails:'#c2afe8', Favorites:'#ad8bdc', [sharedCategory]:'#f2a8c4'
+ 'All recipes':'#f2a8c4', Mains:'#f7bd91', Soups:'#f3dc87', Sides:'#d5e8a9',
+ Salads:'#9fd7be', Desserts:'#9bc7ea', Cocktails:'#c2afe8', Favorites:'#ad8bdc', [sharedCategory]:'#f7c9df'
 };
 const samples=[{"id": "wild-rice-mushroom-soup", "demo": false, "adapted": true, "title": "Wild Rice and Mushroom Soup", "category": "Soups", "chef": "Jamie Vespa MS, RD · Dishing Out Health", "time": "1 hr 25 min", "servings": "6 servings", "image": "https://dishingouthealth.com/wp-content/uploads/2020/09/WildRiceMushroomSoup_Square-300x300.jpg", "source": "https://dishingouthealth.com/wild-rice-mixed-mushroom-soup/", "ingredients": ["2 Tbsp olive oil", "2 Tbsp unsalted butter", "1 yellow onion, finely chopped", "¾ cup finely chopped carrots", "½ cup finely chopped celery", "8–12 oz sliced cremini mushrooms (or cremini and shiitake)", "4 garlic cloves, minced", "1 cup dry wild rice blend", "1 Tbsp poultry seasoning (or Herbes de Provence)", "1 tsp kosher salt", "½ tsp black pepper", "4 cups lower-sodium vegetable broth", "1 cup water", "⅔ cup heavy cream (or cashew cream)", "⅓ cup finely grated Parmesan"], "steps": ["Measure ⅔ cup cream; leave at room temperature.", "Heat 2 Tbsp oil and 2 Tbsp butter over medium-high heat. Soften 1 chopped onion, ¾ cup carrots and ½ cup celery for 8 minutes.", "Add 8–12 oz mushrooms and 4 minced garlic cloves. Cook 6–8 minutes, stirring occasionally, until golden.", "Toast 1 cup rice in the pot for 1–2 minutes. Add 1 Tbsp poultry seasoning, 1 tsp salt and ½ tsp pepper.", "Pour in 4 cups broth and 1 cup water. Bring to a gentle boil. Cover; simmer over medium-low heat for 45–60 minutes, until rice is tender.", "Stir in ⅔ cup cream. Gradually add ⅓ cup Parmesan, stirring. Take off heat and serve."]}];
 const storageKey='little-recipe-box-v1', seedKey='little-recipe-box-default-wild-rice-v1';
@@ -377,7 +377,7 @@ function openCookingMode(recipe) {
  document.addEventListener('visibilitychange',keepAwake);
  keepAwake();
 }
-function detail(id,shared=false){let r=(shared?sharedRecipes:recipes).find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero ${r.photoOnly?'recipe-scan':''}" src="${esc(recipeImageUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(r.category)} · ${shared?'FROM SYD’S RECIPES':r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p>${shared?'':`<div class="recipe-actions"><button type="button" id="editRecipe" class="round edit-link">Edit recipe</button>${favoriteButton(r)}</div>${recipePairings(r)}`}${r.photoOnly?'':`<div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button>${r.steps.length?'<button class="primary jump-instructions" id="startCooking">Start cooking</button>':''}<h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${(r.adapted?r.steps:cookingSteps(instructionsWithAmounts(r.steps,r.ingredients))).map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}`}${shared?'':`<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section>`}${r.source?`<a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>`:''}${!shared&&r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Delete recipe</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});bindFavorites();
+function detail(id,shared=false){let r=(shared?sharedRecipes:recipes).find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero ${r.photoOnly?'recipe-scan':''}" src="${esc(recipeImageUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(r.category)} · ${shared?'FROM SYD’S FAVORITES':r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p>${shared?'':`<div class="recipe-actions"><button type="button" id="editRecipe" class="round edit-link">Edit recipe</button>${favoriteButton(r)}</div>${recipePairings(r)}`}${r.photoOnly?'':`<div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button>${r.steps.length?'<button class="primary jump-instructions" id="startCooking">Start cooking</button>':''}<h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${(r.adapted?r.steps:cookingSteps(instructionsWithAmounts(r.steps,r.ingredients))).map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}`}${shared?'':`<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section>`}${r.source?`<a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>`:''}${!shared&&r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Delete recipe</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});bindFavorites();
  app.querySelectorAll('[data-pairing]').forEach(link => link.onclick = event => {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   event.preventDefault();
@@ -428,8 +428,7 @@ function connectRecipeStorage() {
  box();
  if (!user) return;
  let sharedSynced = false;
- if (!window.recipeAuth.isSharedOwner(user)) {
-  sharedStatus = 'Loading Syd’s recipes…';
+ sharedStatus = 'Loading Syd’s favorites…';
   stopSharedWatch = window.recipeAuth.watchShared(snapshot => {
    if (cloudUser?.uid !== user.uid) return;
    sharedRecipes = snapshot.docs.map(doc => ({...doc.data(),id:doc.id,demo:false}));
@@ -440,17 +439,16 @@ function connectRecipeStorage() {
    } else if (!selected && active === sharedCategory) cards();
   }, () => {
    if (cloudUser?.uid !== user.uid) return;
-   sharedStatus = 'Syd’s recipes couldn’t load. Try refreshing.';
+   sharedStatus = 'Syd’s favorites couldn’t load. Try refreshing.';
    if (!selected && active === sharedCategory) cards();
   });
- }
  stopCloudWatch = window.recipeAuth.watch(user, snapshot => {
   if (cloudUser?.uid !== user.uid) return;
   if (!sharedSynced && window.recipeAuth.isSharedOwner(user) &&
       !snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) {
    sharedSynced = true;
    window.recipeAuth.syncShared(user,snapshot.docs).catch(() => {
-    if (cloudUser?.uid === user.uid) toast('Syd’s Recipes couldn’t sync. Refresh to retry.');
+    if (cloudUser?.uid === user.uid) toast('Syd’s Favorites couldn’t sync. Refresh to retry.');
    });
   }
   cloudRecipes = new Map(snapshot.docs.map(doc => [doc.id, {...doc.data(), id:doc.id}]));

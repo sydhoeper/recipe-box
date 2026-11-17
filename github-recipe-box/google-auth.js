@@ -24,7 +24,7 @@ if (config) {
     const auth = sdk.getAuth(app);
     const firestore = db.getFirestore(app);
     await auth.authStateReady();
-    const shared = db.collection(firestore, 'sydRecipes');
+    const shared = db.collection(firestore, 'sydFavorites');
     const privateRef = (user, id) => db.doc(firestore, 'users', user.uid, 'recipes', id);
     window.recipeAuth = {
       isSharedOwner: user => user?.uid === sharedOwner,
@@ -40,12 +40,12 @@ if (config) {
         }
         for (const id of ids) {
           const recipe = privateData.get(id);
-          if (sameRecipe(recipe?.deleted ? null : recipe, existing.get(id))) continue;
+          if (sameRecipe(recipe?.favorite && !recipe.deleted ? recipe : null, existing.get(id))) continue;
           if (auth.currentUser?.uid !== user.uid) return;
           await db.runTransaction(firestore, async transaction => {
             const latest = (await transaction.get(privateRef(user, id))).data();
             const ref = db.doc(shared, id);
-            if (!latest || latest.deleted) transaction.delete(ref);
+            if (!latest?.favorite || latest.deleted) transaction.delete(ref);
             else transaction.set(ref, shareableRecipe(latest));
           });
         }
@@ -64,7 +64,7 @@ if (config) {
           else batch.delete(ref);
           if (user.uid === sharedOwner) {
             const sharedRef = db.doc(shared, id);
-            if (recipe && !recipe.deleted) batch.set(sharedRef, shareableRecipe(recipe));
+            if (recipe?.favorite && !recipe.deleted) batch.set(sharedRef, shareableRecipe(recipe));
             else batch.delete(sharedRef);
           }
         }
