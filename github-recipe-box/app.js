@@ -6,6 +6,7 @@ let sharedStatus = '';
 let stopSharedWatch;
 const visibleCategories = () => cloudUser
  ? [...categories,sharedCategory] : categories;
+const categoryLabel = name => name === 'Cocktails' ? 'Drinks' : name;
 const categoryColors = {
  'All recipes':'#f2a8c4', Mains:'#f7bd91', Soups:'#f3dc87', Sides:'#d5e8a9',
  Salads:'#9fd7be', Desserts:'#9bc7ea', Cocktails:'#c2afe8', 'My Favorites':'#ad8bdc', [sharedCategory]:'#f7c9df'
@@ -30,7 +31,7 @@ function safeUrl(s){try{const u=new URL(s);return ['https:','http:'].includes(u.
 function toast(s){$('#toast').textContent=s;$('#toast').style.display='block';setTimeout(()=>$('#toast').style.display='none',3500)}
 function save(){if(window.recipeAuth?.user)return saveCloudRecipes();try{localStorage.setItem('little-recipe-box-v1',JSON.stringify(recipes));deviceRecipes=recipes;return true}catch{toast('Your browser could not save this recipe. Free some device storage and try again.');return false}}
 const logo='<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M5 14h30l-2 21H7L5 14Z M10 14V8h20v6 M14 8V4h12v4 M4 20h32 M16 25h8"/><path d="m28 3 2-2m4 7 3-1"/></svg>';
-function box(){selected=null;document.title='Little Recipe Box';app.innerHTML=`<div class="shell"><header class="topbar"><div class="brand">${logo}<span>little recipe box</span></div><button class="primary google-button" id="googleSignIn">Continue with Google</button></header><main id="main"><section class="hero"><div><p class="eyebrow">ALL YOUR GOOD FOOD, TOGETHER.</p><h1>Your little<br><em>recipe box.</em></h1><p class="subtitle">A happy little home for everything you love to cook.</p></div><div class="heroart" aria-hidden="true"><div class="artpaper"></div><span class="star">✧</span><span class="spoon">♡</span></div></section><div class="toolbar"><div class="search"><span aria-hidden="true">⌕</span><input id="search" aria-label="Search recipes" type="search" placeholder="Find something delicious…" value="${esc(query)}"></div><button class="primary" id="add">＋ <span style="font-size:13px">Add a recipe</span></button></div><section class="box" aria-label="Your recipe box"><div class="tabs" role="tablist" aria-label="Recipe categories">${visibleCategories().map((c,i)=>`<button class="tab" role="tab" id="tab${i}" aria-controls="cards" aria-selected="${c===active}" tabindex="${c===active?0:-1}" style="background:${categoryColors[c]}" data-cat="${c}">${c}</button>`).join('')}</div><div class="boxhead"><span id="collectionTitle">${active==='All recipes'?'THE WHOLE COLLECTION':active.toUpperCase()}</span><span id="count"></span></div><div class="grid" id="cards" role="tabpanel" aria-labelledby="tab${visibleCategories().indexOf(active)}"></div><div class="boxfoot">A few favorites, a lifetime of good meals.</div></section><p class="savehint">✧ <span id="recipeStorageStatus" role="status">${esc(syncStatus || 'Saved on this device')}</span></p></main><footer class="footer"><span>MADE FOR MESSY COUNTERS & HAPPY TABLES</span><span>With a little <span class="heart">♡</span></span></footer></div>`;
+function box(){selected=null;document.title='Little Recipe Box';app.innerHTML=`<div class="shell"><header class="topbar"><div class="brand">${logo}<span>little recipe box</span></div><button class="primary google-button" id="googleSignIn">Continue with Google</button></header><main id="main"><section class="hero"><div><p class="eyebrow">ALL YOUR GOOD FOOD, TOGETHER.</p><h1>Your little<br><em>recipe box.</em></h1><p class="subtitle">A happy little home for everything you love to cook.</p></div><div class="heroart" aria-hidden="true"><div class="artpaper"></div><span class="star">✧</span><span class="spoon">♡</span></div></section><div class="toolbar"><div class="search"><span aria-hidden="true">⌕</span><input id="search" aria-label="Search recipes" type="search" placeholder="Find something delicious…" value="${esc(query)}"></div><button class="primary" id="add">＋ <span style="font-size:13px">Add a recipe</span></button></div><section class="box" aria-label="Your recipe box"><div class="tabs" role="tablist" aria-label="Recipe categories">${visibleCategories().map((c,i)=>`<button class="tab" role="tab" id="tab${i}" aria-controls="cards" aria-selected="${c===active}" tabindex="${c===active?0:-1}" style="background:${categoryColors[c]}" data-cat="${c}">${categoryLabel(c)}</button>`).join('')}</div><div class="boxhead"><span id="collectionTitle">${active==='All recipes'?'THE WHOLE COLLECTION':categoryLabel(active).toUpperCase()}</span><span id="count"></span></div><div class="grid" id="cards" role="tabpanel" aria-labelledby="tab${visibleCategories().indexOf(active)}"></div><div class="boxfoot">A few favorites, a lifetime of good meals.</div></section><p class="savehint">✧ <span id="recipeStorageStatus" role="status">${esc(syncStatus || 'Saved on this device')}</span></p></main><footer class="footer"><span>MADE FOR MESSY COUNTERS & HAPPY TABLES</span><span>With a little <span class="heart">♡</span></span></footer></div>`;
 bindGoogleButton();$('#add').onclick=()=>requireGoogle(true);$('#search').oninput=e=>{query=e.target.value;cards()};document.querySelectorAll('[data-cat]').forEach(b=>{b.onclick=()=>{active=b.dataset.cat;box()};b.onkeydown=e=>{const categories=visibleCategories();let i=categories.indexOf(active);if(['ArrowRight','ArrowLeft','Home','End'].includes(e.key)){e.preventDefault();i=e.key==='Home'?0:e.key==='End'?categories.length-1:(i+(e.key==='ArrowRight'?1:-1)+categories.length)%categories.length;active=categories[i];box();$('#tab'+i).focus()}}});cards()}
 function recipeImageUrl(value) {
  return typeof value === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(value)
@@ -82,7 +83,7 @@ function bindFavorites() {
   };
  });
 }
-function cards(){const shared=active===sharedCategory;let list=(shared?sharedRecipes:recipes).filter(r=>(shared||active==='All recipes'||(active==='My Favorites'?r.favorite:r.category===active))&&(r.title+' '+r.ingredients.join(' ')).toLowerCase().includes(query.toLowerCase()));const visible=list.sort((a,b)=>a.title.localeCompare(b.title,'en',{sensitivity:'base'}));$('#count').textContent=`${list.length} RECIPE${list.length===1?'':'S'}`;$('#cards').innerHTML=visible.length?visible.map((r,i)=>`<article class="card" style="--card-accent:${categoryColors[r.category] || categoryColors['All recipes']}"><button class="cardmain" data-open="${esc(r.id)}" aria-label="Open ${esc(r.title)}${r.linkOnly?' (original recipe, new tab)':''}">${r.image?`<img class="photo" src="${esc(recipeImageUrl(r.image))}" alt="" loading="lazy">`:'<div class="photo" style="display:grid;place-items:center;font-size:66px" aria-hidden="true">✧</div>'}<div class="cardbody"><p class="eyebrow">${esc(r.category)} <span aria-hidden="true">·</span> ${r.linkOnly?'SAVED LINK':r.demo===false?'YOUR KEEPSAKE':'FROM OUR SAMPLE BOX'}</p><h3>${esc(r.title)}</h3><div class="meta">${r.linkOnly?'Open original ↗':recipeFacts(r,true)}</div></div></button>${shared?'':favoriteButton(r)}${r.linkOnly&&!shared?`<button type="button" class="round edit-link" data-edit="${esc(r.id)}">Edit recipe</button><button type="button" class="round" data-delete="${esc(r.id)}">Delete recipe</button>`:''}</article>`).join(''):`<div class="empty"><h3>A little room for something good.</h3><p>${shared?esc(sharedStatus || 'Syd hasn’t shared any matching recipes yet.'):active==='My Favorites'?'Tap the star on a recipe to add it here.':'Try another search, or add your first recipe here.'}</p></div>`;document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
+function cards(){const shared=active===sharedCategory;let list=(shared?sharedRecipes:recipes).filter(r=>(shared||active==='All recipes'||(active==='My Favorites'?r.favorite:r.category===active))&&(r.title+' '+r.ingredients.join(' ')).toLowerCase().includes(query.toLowerCase()));const visible=list.sort((a,b)=>a.title.localeCompare(b.title,'en',{sensitivity:'base'}));$('#count').textContent=`${list.length} RECIPE${list.length===1?'':'S'}`;$('#cards').innerHTML=visible.length?visible.map((r,i)=>`<article class="card" style="--card-accent:${categoryColors[r.category] || categoryColors['All recipes']}"><button class="cardmain" data-open="${esc(r.id)}" aria-label="Open ${esc(r.title)}${r.linkOnly?' (original recipe, new tab)':''}">${r.image?`<img class="photo" src="${esc(recipeImageUrl(r.image))}" alt="" loading="lazy">`:'<div class="photo" style="display:grid;place-items:center;font-size:66px" aria-hidden="true">✧</div>'}<div class="cardbody"><p class="eyebrow">${esc(categoryLabel(r.category))} <span aria-hidden="true">·</span> ${r.linkOnly?'SAVED LINK':r.demo===false?'YOUR KEEPSAKE':'FROM OUR SAMPLE BOX'}</p><h3>${esc(r.title)}</h3><div class="meta">${r.linkOnly?'Open original ↗':recipeFacts(r,true)}</div></div></button>${shared?'':favoriteButton(r)}${r.linkOnly&&!shared?`<button type="button" class="round edit-link" data-edit="${esc(r.id)}">Edit recipe</button><button type="button" class="round" data-delete="${esc(r.id)}">Delete recipe</button>`:''}</article>`).join(''):`<div class="empty"><h3>A little room for something good.</h3><p>${shared?esc(sharedStatus || 'Syd hasn’t shared any matching recipes yet.'):active==='My Favorites'?'Tap the star on a recipe to add it here.':'Try another search, or add your first recipe here.'}</p></div>`;document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
  const recipe = (shared?sharedRecipes:recipes).find(r => r.id === b.dataset.open);
  if (recipe?.linkOnly) window.open(safeUrl(recipe.source), '_blank', 'noopener,noreferrer');
  else openRecipe(b.dataset.open,shared);
@@ -110,14 +111,21 @@ function recipePairings(recipe) {
  ).join('')}</ul></section>`;
 }
 
-function editRecipe(id) {
+function editRecipe(id, pairingsOnly = false) {
  const recipe = recipes.find(item => item.id === id);
  if (!recipe) return;
  const owner = cloudUser?.uid;
  const editor = $('#editRecipeDialog');
  const form = $('#editRecipeForm');
  const category = $('#editCategory');
- category.replaceChildren(...categories.filter(name=>name!=='All recipes'&&name!=='My Favorites').map(name => new Option(name)));
+ const titleInput = $('#editTitle');
+ $('#editRecipeHeading').textContent = pairingsOnly ? 'Serve with' : 'Edit recipe';
+ for (const field of [titleInput,category]) {
+  field.style.display = pairingsOnly ? 'none' : '';
+  field.labels[0].style.display = field.style.display;
+ }
+ titleInput.required = !pairingsOnly;
+ category.replaceChildren(...categories.filter(name=>name!=='All recipes'&&name!=='My Favorites').map(name => new Option(categoryLabel(name),name)));
  $('#editTitle').value = recipe.title;
  category.value = recipe.category;
  const pairingField = $('#editPairings');
@@ -129,16 +137,41 @@ function editRecipe(id) {
   pairingOptions.replaceChildren();
   if (pairingField.hidden) return;
   const options = recipes.filter(item => item.id !== id && !item.linkOnly && item.category === targetCategory);
-  if (!options.length) pairingOptions.textContent = `Add a recipe under ${targetCategory} to pair it here.`;
-  for (const item of options) {
-   const label = document.createElement('label');
-   label.className = 'ingredient';
-   const input = document.createElement('input');
-   input.type = 'checkbox';
-   input.checked = chosen.has(item.id);
-   input.onchange = () => input.checked ? chosen.add(item.id) : chosen.delete(item.id);
-   label.append(input, document.createTextNode(item.title));
-   pairingOptions.append(label);
+  if (!options.length) {
+   pairingOptions.textContent = `Add a recipe under ${targetCategory} to pair it here.`;
+   return;
+  }
+  const dropdown = document.createElement('select');
+  const label = document.createElement('label');
+  dropdown.id = 'pairingRecipe';
+  label.htmlFor = dropdown.id;
+  label.textContent = targetCategory === 'Sides' ? 'Choose a side' : 'Choose a main';
+  dropdown.add(new Option('Select a recipe…',''));
+  const sorted = options.sort((a,b)=>a.title.localeCompare(b.title,'en',{sensitivity:'base'}));
+  for (const item of sorted) {
+   if (!chosen.has(item.id)) dropdown.add(new Option(item.title,item.id));
+  }
+  dropdown.onchange = () => {
+   if (!dropdown.value) return;
+   chosen.add(dropdown.value);
+   renderPairingOptions();
+   pairingOptions.querySelector('select').focus();
+  };
+  pairingOptions.append(label,dropdown);
+  for (const item of sorted.filter(item => chosen.has(item.id))) {
+   const row = document.createElement('p');
+   const remove = document.createElement('button');
+   remove.type = 'button';
+   remove.className = 'round';
+   remove.textContent = 'Remove';
+   remove.setAttribute('aria-label',`Remove pairing with ${item.title}`);
+   remove.onclick = () => {
+    chosen.delete(item.id);
+    renderPairingOptions();
+    pairingOptions.querySelector('select').focus();
+   };
+   row.append(document.createTextNode(item.title+' '),remove);
+   pairingOptions.append(row);
   }
  }
  category.onchange = renderPairingOptions;
@@ -146,28 +179,29 @@ function editRecipe(id) {
  $('#editChef').value = recipe.chef || '';
  $('#editIngredients').value = recipe.ingredients.join('\n');
  $('#editSteps').value = recipe.steps.join('\n');
- $('#editDetails').hidden = Boolean(recipe.linkOnly || recipe.photoOnly);
+ $('#editDetails').hidden = pairingsOnly || Boolean(recipe.linkOnly || recipe.photoOnly);
  $('#editStatus').textContent = '';
  $('#cancelRecipeEdit').onclick = () => editor.close();
  form.onsubmit = event => {
   event.preventDefault();
   const current = recipes.find(item => item.id === id);
   if (!current || cloudUser?.uid !== owner) { editor.close(); return; }
-  const title = $('#editTitle').value.trim();
+  const title = pairingsOnly ? current.title : titleInput.value.trim();
+  const nextCategory = pairingsOnly ? current.category : category.value;
   const lines = selector => $(selector).value.split('\n').map(line => line.trim()).filter(Boolean);
-  const details = (recipe.linkOnly || recipe.photoOnly) ? {} : {
+  const details = (pairingsOnly || recipe.linkOnly || recipe.photoOnly) ? {} : {
    chef:$('#editChef').value.trim(), ingredients:lines('#editIngredients'), steps:lines('#editSteps')
   };
-  if (!title || (!recipe.linkOnly && !recipe.photoOnly && (!details.ingredients.length || !details.steps.length))) {
+  if (!pairingsOnly && (!title || (!recipe.linkOnly && !recipe.photoOnly && (!details.ingredients.length || !details.steps.length)))) {
    $('#editStatus').textContent = 'Add a title, at least one ingredient, and at least one step.';
    return;
   }
   const previous = recipes;
   const pairings = recipe.linkOnly ? [] : recipes.filter(item => item.id !== id &&
-   !item.linkOnly && item.category === pairingCategory(category.value) && chosen.has(item.id)).map(item => item.id);
+   !item.linkOnly && item.category === pairingCategory(nextCategory) && chosen.has(item.id)).map(item => item.id);
   const pairedIds = new Set(pairings);
   recipes = recipes.map(item => {
-   if (item.id === id) return {...current,...details,title,category:category.value,pairings};
+   if (item.id === id) return {...current,...details,title,category:nextCategory,pairings};
    const wasPaired = item.pairings?.includes(id) || false;
    if (wasPaired === pairedIds.has(item.id)) return item;
    return {...item,pairings:wasPaired ? item.pairings.filter(other => other !== id) : [...(item.pairings || []),id]};
@@ -183,7 +217,8 @@ function editRecipe(id) {
   toast(owner ? 'Changes queued for sync.' : 'Recipe updated.');
  };
  editor.showModal();
- $('#editTitle').focus();
+ if (pairingsOnly) (pairingOptions.querySelector('select') || $('#cancelRecipeEdit')).focus();
+ else titleInput.focus();
 }
 function confirmRecipeDeletion(id) {
  const recipe = recipes.find(item => item.id === id);
@@ -377,13 +412,14 @@ function openCookingMode(recipe) {
  document.addEventListener('visibilitychange',keepAwake);
  keepAwake();
 }
-function detail(id,shared=false){let r=(shared?sharedRecipes:recipes).find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero ${r.photoOnly?'recipe-scan':''}" src="${esc(recipeImageUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(r.category)} · ${shared?'FROM SYD’S FAVORITES':r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p>${shared?'':`<div class="recipe-actions"><button type="button" id="editRecipe" class="round edit-link">Edit recipe</button>${favoriteButton(r)}</div>${recipePairings(r)}`}${r.photoOnly?'':`<div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button>${r.steps.length?'<button class="primary jump-instructions" id="startCooking">Start cooking</button>':''}<h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${(r.adapted?r.steps:cookingSteps(instructionsWithAmounts(r.steps,r.ingredients))).map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}`}${shared?'':`<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section>`}${r.source?`<a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>`:''}${!shared&&r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Delete recipe</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});bindFavorites();
+function detail(id,shared=false){let r=(shared?sharedRecipes:recipes).find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero ${r.photoOnly?'recipe-scan':''}" src="${esc(recipeImageUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(categoryLabel(r.category))} · ${shared?'FROM SYD’S FAVORITES':r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p>${shared?'':`<div class="recipe-actions"><button type="button" id="editRecipe" class="round edit-link">Edit recipe</button>${pairingCategory(r.category)?'<button type="button" id="serveWith" class="round edit-link">Serve with</button>':''}${favoriteButton(r)}</div>${recipePairings(r)}`}${r.photoOnly?'':`<div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button>${r.steps.length?'<button class="primary jump-instructions" id="startCooking">Start cooking</button>':''}<h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${(r.adapted?r.steps:cookingSteps(instructionsWithAmounts(r.steps,r.ingredients))).map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}`}${shared?'':`<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section>`}${r.source?`<a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>`:''}${!shared&&r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Delete recipe</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});bindFavorites();
  app.querySelectorAll('[data-pairing]').forEach(link => link.onclick = event => {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   event.preventDefault();
   openRecipe(link.dataset.pairing);
  });
 if($('#editRecipe')) $('#editRecipe').onclick=()=>editRecipe(id);
+if($('#serveWith')) $('#serveWith').onclick=()=>editRecipe(id,true);
 if($('#startCooking')) $('#startCooking').onclick=()=>openCookingMode(r);
 if($('#jumpInstructions')) $('#jumpInstructions').onclick=()=>{
  const heading=$('#recipeInstructions');
@@ -401,7 +437,7 @@ if($('#recipeNotesForm')) $('#recipeNotesForm').onsubmit=event=>{
 $('#back').onclick=()=>{if(history.state?.recipe)history.back();else{history.replaceState(null,'',location.pathname);box()}};if($('#remove'))$('#remove').onclick=()=>confirmRecipeDeletion(id);}
 
 window.addEventListener('scroll',()=>{if(selected&&$('.recipebar'))$('.recipebar').classList.toggle('hide',window.scrollY>90)},{passive:true});window.addEventListener('popstate',()=>{if(location.hash.startsWith('#recipe-'))detail(decodeURIComponent(location.hash.slice(8)));else if(location.hash.startsWith('#syd-')){if(cloudUser){active=sharedCategory;detail(decodeURIComponent(location.hash.slice(5)),true)}else box()}else box()});
-$('#category').innerHTML=categories.filter(name=>name!=='All recipes'&&name!=='My Favorites').map(c=>`<option>${c}</option>`).join('');let pendingSource='';let importing=false;let controller;
+$('#category').innerHTML=categories.filter(name=>name!=='All recipes'&&name!=='My Favorites').map(c=>`<option value="${c}">${categoryLabel(c)}</option>`).join('');let pendingSource='';let importing=false;let controller;
 let deviceRecipes = recipes;
 let signingIn = false;
 let cloudUser = null;
@@ -574,7 +610,7 @@ function setImportMode(mode) {
 document.querySelectorAll('[name="recipeMode"]').forEach(input => {
  input.onchange = () => setImportMode(input.value);
 });
-$('#photoCategory').replaceChildren(...categories.filter(name=>name!=='All recipes'&&name!=='My Favorites').map(name=>new Option(name)));
+$('#photoCategory').replaceChildren(...categories.filter(name=>name!=='All recipes'&&name!=='My Favorites').map(name=>new Option(categoryLabel(name),name)));
 $('#photoImportForm').onsubmit = async event => {
  event.preventDefault();
  const owner = cloudUser?.uid;
