@@ -375,14 +375,52 @@ async function requireGoogle(openAfterSignIn) {
   signingIn = false;
  }
 }
-function openImport(){ $('#manualForm').hidden=true;$('#importStatus').textContent='';$('#importForm').reset();$('#manualForm').reset();dialog.showModal();$('#url').focus()}
-$('.close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{controller?.abort();importing=false;$('#importForm button').disabled=false});
+function openImport(){ fallback.hidden=true;failedImport=null;$('#manualForm').hidden=true;$('#importStatus').textContent='';$('#importForm').reset();$('#manualForm').reset();dialog.showModal();$('#url').focus()}
+dialog.querySelector('.close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{controller?.abort();importing=false;$('#importForm button').disabled=false});
 function extractRecipe(html){const doc=new DOMParser().parseFromString(html,'text/html');let found;function walk(x){if(!x||typeof x!=='object')return;if((Array.isArray(x['@type'])?x['@type']:[x['@type']]).includes('Recipe')&&!found)found=x;Object.values(x).forEach(v=>{if(Array.isArray(v))v.forEach(walk);else if(typeof v==='object')walk(v)})}doc.querySelectorAll('script[type="application/ld+json"]').forEach(s=>{try{walk(JSON.parse(s.textContent))}catch{}});return found}
 function plain(v){const d=new DOMParser().parseFromString(String(v||''),'text/html');return d.body.textContent||''}
-function normalize(x){let steps=[];function flatten(a){if(Array.isArray(a))a.forEach(flatten);else if(typeof a==='string')steps.push(plain(a));else if(a?.itemListElement)flatten(a.itemListElement);else if(a?.text)steps.push(plain(a.text))}flatten(x.recipeInstructions);const authors=Array.isArray(x.author)?x.author:[x.author];const img=Array.isArray(x.image)?x.image[0]:x.image;return {id:crypto.randomUUID(),demo:false,title:plain(x.name),chef:authors.map(a=>typeof a==='string'?a:a?.name||'').filter(Boolean).join(', '),image:safeUrl(typeof img==='string'?img:img?.url),category:$('#category').value,ingredients:(x.recipeIngredient||[]).map(plain),steps,source:pendingSource,prepTime:formatDuration(x.prepTime),cookTime:formatDuration(x.cookTime),time:formatDuration(x.totalTime),servings:plain(Array.isArray(x.recipeYield)?x.recipeYield.join(', '):x.recipeYield)}}
-function finish(r){if(!r.title||!r.ingredients.length||!r.steps.length)throw Error('This page has an incomplete recipe.');const old=recipes;recipes=[r,...recipes];if(!save()){recipes=old;return}dialog.close();active='All recipes';query='';box();toast('Tucked into your recipe box.');openRecipe(r.id)}
+function normalize(x){let steps=[];function flatten(a){if(Array.isArray(a))a.forEach(flatten);else if(typeof a==='string')steps.push(plain(a));else if(a?.itemListElement)flatten(a.itemListElement);else if(a?.text)steps.push(plain(a.text))}flatten(x.recipeInstructions);const authors=Array.isArray(x.author)?x.author:[x.author];const img=Array.isArray(x.image)?x.image[0]:x.image;return {id:crypto.randomUUID(),demo:false,title:plain(x.name),chef:authors.map(a=>typeof a==='string'?a:a?.name||'').filter(Boolean).join(', '),image:safeUrl(typeof img==='string'?img:img?.url),category:$('#category').value,ingredients:(x.recipeIngredient||[]).map(plain),steps,prepTime:formatDuration(x.prepTime),cookTime:formatDuration(x.cookTime),time:formatDuration(x.totalTime),servings:plain(Array.isArray(x.recipeYield)?x.recipeYield.join(', '):x.recipeYield)}}
+function saveImportedCard(recipe) {
+ const previous = recipes;
+ const existing = recipes.find(item => item.linkOnly && item.source === recipe.source);
+ if (existing) recipe.id = existing.id;
+ recipes = [recipe,...recipes.filter(item => item.id !== recipe.id)];
+ if (!save()) { recipes = previous; return; }
+ dialog.close();
+ active = 'All recipes';
+ query = '';
+ box();
+ toast(recipe.linkOnly ? 'Recipe link saved.' : 'Recipe saved.');
+ if (!recipe.linkOnly) openRecipe(recipe.id);
+}
+
+const fallback = $('#importFallback');
+const importMessages = {
+ 'Use a public HTTPS recipe link.': 'This link can’t be fetched. Check that it opens a public recipe page and starts with https://.',
+ 'The recipe site did not return a readable page.': 'The recipe site didn’t send a page the importer could read. You may still be able to open it in your browser.',
+ 'No complete recipe card was found on this page.': 'The page didn’t contain a recipe card with both ingredients and instructions.',
+ 'The recipe page was too large.': 'The recipe page was too large for the importer to read.'
+};
+let failedImport;
+function showImportChoices(card, owner, message) {
+ failedImport = {card, owner};
+ $('#importStatus').textContent = '';
+ $('#importReason').textContent = message;
+ $('#importOriginal').href = card.source;
+ $('#recipeTitle').value = card.title;
+ fallback.hidden = false;
+ $('#importFailureTitle').focus();
+}
+$('#enterManually').onclick = () => {
+ $('#manualForm').hidden = false;
+ $('#recipeTitle').focus();
+};
+$('#saveLinkOnly').onclick = () => {
+ if (failedImport && failedImport.owner === cloudUser?.uid) saveImportedCard(failedImport.card);
+};
 $('#importForm').onsubmit = async event => {
  event.preventDefault();
+ if (importing) return;
  const source = safeUrl($('#url').value.trim());
  if (!source) {
   $('#importStatus').textContent = 'Enter a valid recipe link.';
@@ -393,41 +431,62 @@ $('#importForm').onsubmit = async event => {
  let title = slug || url.hostname;
  try { title = decodeURIComponent(title); } catch {}
  if (slug) title = title.replace(/[-_]+/g, ' ').replace(/^./u, c => c.toUpperCase());
- const category = $('#category').value;
- const importUser = cloudUser?.uid;
- const card = {id:crypto.randomUUID(), demo:false, linkOnly:true, title, category, source, ingredients:[], steps:[]};
- const previous = recipes;
- const existing = recipes.find(r => r.linkOnly && r.source === source);
- if (existing) card.id = existing.id;
- recipes = [card,...recipes.filter(r => r.id !== card.id)];
- if (!save()) { recipes = previous; return; }
- dialog.close();
- active = 'All recipes';
- query = '';
- box();
- toast('Recipe link saved.');
+ const owner = cloudUser?.uid;
+ const card = {id:crypto.randomUUID(), demo:false, linkOnly:true, title,
+  category:$('#category').value, source, ingredients:[], steps:[]};
+ const request = new AbortController();
+ controller = request;
+ importing = true;
+ const submit = $('#importForm button');
+ submit.disabled = true;
+ fallback.hidden = true;
+ $('#manualForm').hidden = true;
+ failedImport = null;
+ $('#importStatus').textContent = 'Trying to import the recipe…';
+ const stillCurrent = () => dialog.open && controller === request && owner === cloudUser?.uid;
+ let timedOut = false;
+ const timer = setTimeout(() => { timedOut = true; request.abort(); },12000);
  try {
   const endpoint = document.querySelector('meta[name="recipe-importer"]')?.content;
   let data;
+  let reason = 'The page didn’t contain a recipe card with both ingredients and instructions.';
   if (endpoint) {
    const requestUrl = new URL(endpoint);
-   requestUrl.searchParams.set('url', source);
-   const response = await fetch(requestUrl, {credentials:'omit', signal:AbortSignal.timeout(12000)});
-   if (response.ok) data = (await response.json()).recipe;
+   requestUrl.searchParams.set('url',source);
+   const response = await fetch(requestUrl,{credentials:'omit',signal:request.signal});
+   const result = await response.json();
+   if (response.ok) data = result.recipe;
+   else reason = importMessages[result.error] || 'The importer couldn’t read this link. You can try again or add it another way.';
   } else {
-   const response = await fetch(source, {credentials:'omit', signal:AbortSignal.timeout(8000)});
+   const response = await fetch(source,{credentials:'omit',signal:request.signal});
    if (response.ok) data = extractRecipe(await response.text());
   }
-  if (!data) return;
-  const imported = normalize(data);
-  if (!imported.title || !imported.ingredients.length || !imported.steps.length) return;
-  if (cloudUser?.uid !== importUser || !recipes.some(r => r.id === card.id)) return;
-  const beforeImport = recipes;
-  recipes = recipes.map(r => r.id === card.id ? {...imported, id:card.id, source, category} : r);
-  if (!save()) { recipes = beforeImport; return; }
-  if (!selected) cards();
-  toast('Ingredients and steps imported.');
- } catch { /* The saved link remains usable. */ }
+  if (!stillCurrent() || request.signal.aborted) return;
+  const imported = data && normalize(data);
+  if (imported?.title && imported.ingredients.length && imported.steps.length) {
+   $('#importStatus').textContent = '';
+   saveImportedCard({...imported,source,category:card.category});
+  } else showImportChoices(card,owner,reason);
+ } catch {
+  if (stillCurrent() && (!request.signal.aborted || timedOut)) showImportChoices(card,owner,
+   timedOut ? 'The recipe site took too long to respond. Try again or add it another way.' :
+    'The importer couldn’t complete the request. Try again or add it another way.');
+ } finally {
+  clearTimeout(timer);
+  if (controller === request) { importing = false; submit.disabled = false; }
+ }
 };
-$('#manualForm').onsubmit=e=>{e.preventDefault();try{finish({id:crypto.randomUUID(),demo:false,title:$('#recipeTitle').value.trim(),chef:$('#chef').value.trim(),category:$('#category').value,source:pendingSource,ingredients:$('#ingredients').value.split('\n').map(s=>s.trim()).filter(Boolean),steps:$('#instructions').value.split('\n').map(s=>s.trim()).filter(Boolean)})}catch(err){$('#importStatus').textContent=err.message}};
+$('#manualForm').onsubmit = event => {
+ event.preventDefault();
+ if (!failedImport || failedImport.owner !== cloudUser?.uid) return;
+ const lines = id => $(id).value.split('\n').map(line=>line.trim()).filter(Boolean);
+ const title = $('#recipeTitle').value.trim();
+ const ingredients = lines('#ingredients');
+ const steps = lines('#instructions');
+ if (!title || !ingredients.length || !steps.length) {
+  $('#importStatus').textContent = 'Add a title, at least one ingredient, and at least one step.';
+  return;
+ }
+ saveImportedCard({...failedImport.card,linkOnly:false,title,ingredients,steps,chef:$('#chef').value.trim()});
+};
 box();if(location.hash.startsWith('#recipe-'))detail(decodeURIComponent(location.hash.slice(8)));if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
