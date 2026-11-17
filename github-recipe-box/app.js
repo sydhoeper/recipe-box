@@ -29,7 +29,70 @@ function cards(){let list=recipes.filter(r=>(active==='All recipes'||r.category=
  else openRecipe(b.dataset.open);
  });document.querySelectorAll('[data-flip]').forEach(b=>b.onclick=()=>{if(list.length<=1){toast('Add another recipe to flip through your box.');return}page=(page+1)%Math.ceil(list.length/perPage);cards();$('#cards').classList.add('flip');document.querySelectorAll('#paging [data-flip]')[Number(b.dataset.flip)]?.focus({preventScroll:true});setTimeout(()=>$('#cards').classList.remove('flip'),450)})}
 function openRecipe(id){history.pushState({recipe:id},'','#recipe-'+encodeURIComponent(id));detail(id);window.scrollTo(0,0)}
-function stepAmounts(step,ingredients){const stop=new Set(['with','into','then','until','over','from','your','them','that','this','and','the','for','add','cup','cups','tablespoons','teaspoons','chopped','fresh','ground','large','small','finely','taste','water']);const words=step.toLowerCase().match(/[a-z]+/g)||[];const matches=ingredients.filter(ing=>(ing.toLowerCase().match(/[a-z]+/g)||[]).some(w=>w.length>3&&!stop.has(w)&&words.includes(w)));return matches.length?'<span class="stepamounts">'+matches.map(esc).join(' · ')+'</span>':''}
+function instructionsWithAmounts(steps, ingredients) {
+ const additions = steps.map(() => []);
+ const edits = steps.map(() => []);
+ const unit = /^(?:tablespoons?|tbsp\.?|teaspoons?|tsp\.?|cups?|ounces?|oz\.?|pounds?|lbs?\.?|grams?|g|kg|ml|liters?|l|pinch(?:es)?|cans?|cloves?|bunch(?:es)?|handfuls?)\b\.?\s*(?:of\s+)?/i;
+ const number = /^(?:\d+[.,]\d+|\d+\/\d+|\d+|[¼½¾⅓⅔⅛⅜⅝⅞])(?:\s*(?:[¼½¾⅓⅔⅛⅜⅝⅞]|\d+\/\d+)|\s*[-–]\s*\d+)?\s*/u;
+ const qualifiers = /^(?:(?:finely|roughly|chopped|diced|minced|sliced|grated|fresh|large|small|medium|ground|cooked|dry|raw)\s+)+/i;
+ const plural = word => word.endsWith('y') ? [word,word.slice(0,-1)+'ies'] :
+  word.endsWith('s') ? [word,word.replace(/(?:es|s)$/,'')] : [word,word+'s',word+'es'];
+ const escape = word => word.replace(/[.*+?^\${}()|[\]\\]/g,'\\$&');
+ for (const ingredient of ingredients) {
+  const measure = ingredient.match(number)?.[0];
+  if (!measure) continue;
+  const remainder = ingredient.slice(measure.length);
+  const units = remainder.match(unit)?.[0] || '';
+  const amount = (measure + units).trim().replace(/\s+of$/i,'');
+  const name = remainder.slice(units.length).split(/[,;(]/)[0].trim().replace(qualifiers,'');
+  const words = name.match(/[a-z]+/gi);
+  if (!words?.length) continue;
+  const last = words.at(-1);
+  if (last.length < 3) continue;
+  const head = words.slice(0,-1).map(escape);
+  const tail = '(?:'+plural(last).map(escape).join('|')+')';
+  const variants = [[...head,tail].join('\\s+')];
+  if (head.length && !['oil','powder','cream','sauce','milk','salt','pepper','juice','flour','stock','broth'].includes(last.toLowerCase())) variants.push(tail);
+  let occurrences = [];
+  for (const variant of variants) {
+   const pattern = new RegExp('\\b'+variant+'\\b','gi');
+   occurrences = steps.flatMap((step,index)=>Array.from(step.matchAll(pattern),match=>({index,at:match.index,text:match[0]})));
+   if (occurrences.length) break;
+  }
+  if (!occurrences.length) continue;
+  const indices = new Set(occurrences.map(hit=>hit.index));
+  const useful = occurrences.filter(hit=>{
+   const before = steps[hit.index].slice(Math.max(0,hit.at-45),hit.at);
+   return !/(?:\d|[¼½¾⅓⅔⅛⅜⅝⅞])[^,.;!?]{0,32}\s$/u.test(before) &&
+    !/\b(?:remaining|rest of the|half the|some of the|reserved)\s*$/i.test(before);
+  });
+  if (!useful.length) continue;
+  if (indices.size > 1 || /\b(?:divided|split)\b/i.test(ingredient)) {
+   const first = useful[0];
+   additions[first.index].push({at:first.at+first.text.length,text:' ('+amount+' total for the recipe)'});
+   continue;
+  }
+  const first = useful[0];
+  const before = steps[first.index].slice(0,first.at);
+  const article = before.match(/\bthe\s+$/i)?.[0] || '';
+  const at = first.at-article.length;
+  const sentenceStart = at === 0 || /[.!?]\s+$/.test(steps[first.index].slice(0,at));
+  const noun = !units && /^1$/.test(amount) && first.text.toLowerCase() !== name.toLowerCase() && words.length === 1
+   ? name : first.text;
+  edits[first.index].push({at,end:first.at+first.text.length,text:(sentenceStart?amount[0].toUpperCase()+amount.slice(1):amount)+' '+noun});
+ }
+ return steps.map((step,i)=>{
+  const changes = [...edits[i],...additions[i].map(change=>({...change,end:change.at}))]
+   .sort((a,b)=>b.at-a.at || b.end-a.end);
+  let boundary = step.length+1;
+  for (const change of changes) {
+   if (change.end > boundary || change.at === boundary) continue;
+   step = step.slice(0,change.at)+change.text+step.slice(change.end);
+   boundary = change.at;
+  }
+  return step;
+ });
+}
 const factShapes = {
  prep:'<path d="M4 15h16M6 15v4h12v-4M8 12l6-7 3 3-5 4"/>',
  cook:'<path d="M4 10h16l-2 9H6zM3 10h18M8 7h8M12 7V5"/>',
@@ -48,7 +111,7 @@ function formatDuration(value) {
  if (!parts) return plain(value);
  return parts.slice(1).map((n,i)=>Number(n)?n+' '+['days','hr','min'][i]:'').filter(Boolean).join(' ');
 }
-function detail(id){let r=recipes.find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero" src="${esc(safeUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(r.category)} · ${r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p><div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button><h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${r.adapted?'<div class="quantitynote">Cooking steps adapted from the original, with amounts included. See the original recipe below for notes and substitutions.</div>':r.demo===false?'<div class="quantitynote">Amounts are shown alongside matching steps. Open the ingredient tray anytime for the full list. Imported steps keep the author’s original wording.</div>':''}${r.steps.map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}${r.demo===false&&!r.adapted?stepAmounts(s,r.ingredients):''}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section><a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>${r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Remove from my box</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});$('#jumpInstructions').onclick=()=>{
+function detail(id){let r=recipes.find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero" src="${esc(safeUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(r.category)} · ${r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p><div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button><h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${(r.adapted?r.steps:instructionsWithAmounts(r.steps,r.ingredients)).map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section><a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>${r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Remove from my box</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});$('#jumpInstructions').onclick=()=>{
  const heading=$('#recipeInstructions');
  heading.focus({preventScroll:true});
  heading.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
