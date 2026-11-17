@@ -138,7 +138,67 @@ function formatDuration(value) {
  if (!parts) return plain(value);
  return parts.slice(1).map((n,i)=>Number(n)?n+' '+['days','hr','min'][i]:'').filter(Boolean).join(' ');
 }
-function detail(id){let r=recipes.find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero" src="${esc(safeUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(r.category)} · ${r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p><div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button><h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${(r.adapted?r.steps:cookingSteps(instructionsWithAmounts(r.steps,r.ingredients))).map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section><a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>${r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Remove from my box</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});$('#jumpInstructions').onclick=()=>{
+function openCookingMode(recipe) {
+ const cooking = $('#cookingMode');
+ const steps = recipe.adapted ? recipe.steps : cookingSteps(instructionsWithAmounts(recipe.steps, recipe.ingredients));
+ if (!steps.length) return;
+ let index = 0;
+ let lock;
+ let requesting = false;
+ $('#cookingTitle').textContent = recipe.title;
+ const heading = $('#cookingProgress');
+ const next = $('#cookingNext');
+ const previous = $('#cookingPrevious');
+ const wakeStatus = $('#cookingWakeStatus');
+ const render = () => {
+  heading.textContent = index < steps.length ? `Step ${index + 1} of ${steps.length}` : 'All done!';
+  $('#cookingStep').textContent = steps[index] || '';
+  previous.disabled = index === 0;
+  next.textContent = index === steps.length ? 'Back to recipe' : index === steps.length - 1 ? 'Finish cooking' : 'Next step →';
+ };
+ const keepAwake = async () => {
+  if (!cooking.open || document.hidden || lock || requesting) return;
+  if (!navigator.wakeLock) {
+   wakeStatus.textContent = 'This browser can’t keep the screen awake.';
+   return;
+  }
+  requesting = true;
+  try {
+   const acquired = await navigator.wakeLock.request('screen');
+   if (!cooking.open) { await acquired.release(); return; }
+   lock = acquired;
+   wakeStatus.textContent = 'Keeping the screen awake';
+   acquired.addEventListener('release', () => {
+    if (lock === acquired) lock = null;
+    if (cooking.open) wakeStatus.textContent = 'Screen wake lock paused';
+   }, {once:true});
+  } catch {
+   if (cooking.open) wakeStatus.textContent = 'Couldn’t keep the screen awake.';
+  } finally {
+   requesting = false;
+  }
+ };
+ const go = delta => {
+  index = Math.max(0,Math.min(steps.length,index+delta));
+  render();
+  heading.focus();
+ };
+ next.onclick = () => index === steps.length ? cooking.close() : go(1);
+ previous.onclick = () => go(-1);
+ $('#cookingExit').onclick = () => cooking.close();
+ cooking.addEventListener('close', () => {
+  document.removeEventListener('visibilitychange',keepAwake);
+  lock?.release().catch(()=>{});
+ }, {once:true});
+ wakeStatus.textContent = '';
+ render();
+ cooking.showModal();
+ heading.focus();
+ document.addEventListener('visibilitychange',keepAwake);
+ keepAwake();
+}
+function detail(id){let r=recipes.find(r=>r.id===id);if(!r)return box();selected=id;checked={};document.title=r.title+' · Little Recipe Box';app.innerHTML=`<main class="recipe" id="main"><header class="recipebar"><button class="round" id="back" aria-label="Back to recipe box">‹</button><h1>${esc(r.title)}</h1><span aria-hidden="true">✧</span></header>${r.image?`<img class="recipehero" src="${esc(safeUrl(r.image))}" alt="${esc(r.title)}">`:''}<p class="eyebrow" style="margin-top:25px">${esc(r.category)} · ${r.demo===false?'FROM YOUR RECIPE BOX':'SAMPLE RECIPE'}</p><h2>${esc(r.title)}</h2><p class="byline">By ${esc(r.chef||'Unknown author')}</p><div class="facts">${recipeFacts(r)}</div><button class="primary jump-instructions" id="jumpInstructions">Jump to instructions ↓</button>${r.steps.length?'<button class="primary jump-instructions" id="startCooking">Start cooking</button>':''}<h3>A little of this…</h3><p class="byline">Tap ingredients to check them off.</p>${r.ingredients.map(x=>`<label class="ingredient"><input type="checkbox"><span>${esc(x)}</span></label>`).join('')}<h3 id="recipeInstructions" tabindex="-1">Instructions</h3>${(r.adapted?r.steps:cookingSteps(instructionsWithAmounts(r.steps,r.ingredients))).map((s,i)=>`<label class="step"><span class="stepnum" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="steptext"><strong>STEP ${i+1}</strong>${esc(s)}</span><input type="checkbox" aria-label="Mark step ${i+1} complete"></label>`).join('')}${r.demo===false?`<details class="ingredientdock"><summary>Ingredients & amounts ↑</summary>${r.ingredients.map(x=>`<p>${esc(x)}</p>`).join('')}</details>`:''}<section class="recipe-notes"><h3>Notes</h3><form id="recipeNotesForm"><label for="recipeNotes">Your notes</label><textarea id="recipeNotes" rows="4" maxlength="10000">${esc(r.notes || '')}</textarea><button class="primary" type="submit">Save notes</button></form></section><a class="source" href="${esc(safeUrl(r.source))}" target="_blank" rel="noopener noreferrer">${r.demo===false?'View original recipe':'Explore recipes from this source'} <span aria-hidden="true">↗</span> <span class="byline">(opens in a new tab)</span></a>${r.demo===false?'<button class="round" id="remove" style="font-size:12px;text-decoration:underline">Remove from my box</button>':''}</main>`;$('#main').setAttribute('tabindex','-1');$('#main').focus({preventScroll:true});if($('#startCooking')) $('#startCooking').onclick=()=>openCookingMode(r);
+$('#jumpInstructions').onclick=()=>{
  const heading=$('#recipeInstructions');
  heading.focus({preventScroll:true});
  heading.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
