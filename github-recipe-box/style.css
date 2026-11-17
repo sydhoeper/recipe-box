@@ -67,3 +67,5 @@ body{background:radial-gradient(ellipse at 8% 16%,#f2a8c421,transparent 34%),rad
 #recipePaste{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:12px;margin-bottom:12px}
 
 .edit-link{width:auto;font-size:14px;padding:0 12px;text-decoration:underline}.card .edit-link{margin-left:12px}#editRecipeDialog{max-height:calc(100dvh - 32px);overflow:auto}#editRecipeForm textarea{resize:vertical}
+
+.card{position:relative}.favorite-star{background:#fff9ef;color:#775100;border:1px solid #e6d6ae;width:44px;height:44px;padding:0;font-size:24px;line-height:1}.card .favorite-star{position:absolute;top:12px;right:12px;z-index:1}.favorite-star[aria-pressed=true]{background:#ffe4a1}.recipe-actions{display:flex;align-items:center;gap:8px;margin-top:8px}
