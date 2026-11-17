@@ -17,3 +17,5 @@ body{background:radial-gradient(ellipse at 8% 16%,#f2a8c421,transparent 34%),rad
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
 
 .search input{border:0;border-bottom:1px solid #1c122050;background:transparent;border-radius:0;padding:12px 0;font-size:14px}.recipebar h1{font-style:normal}.primary:focus-visible,.tab:focus-visible,summary:focus-visible{outline:3px solid #326cbc;outline-offset:4px}
+
+.google-button{white-space:nowrap;flex-shrink:0;gap:0}@media(max-width:480px){.google-button{padding:8px 12px;font-size:12px}.brand{font-size:19px;gap:5px}.brand svg{width:26px;height:26px}}
