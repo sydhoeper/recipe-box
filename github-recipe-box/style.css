@@ -65,3 +65,5 @@ body{background:radial-gradient(ellipse at 8% 16%,#f2a8c421,transparent 34%),rad
 #recipePastePanel label{font-weight:700}
 #pasteHelp,#pasteStatus{margin:6px 0 10px}
 #recipePaste{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:12px;margin-bottom:12px}
+
+.edit-link{width:auto;font-size:14px;padding:0 12px;text-decoration:underline}.card .edit-link{margin-left:12px}#editRecipeDialog{max-height:calc(100dvh - 32px);overflow:auto}#editRecipeForm textarea{resize:vertical}
